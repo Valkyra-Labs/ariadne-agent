@@ -23,28 +23,28 @@ for (const lang of LANGS)
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
       await expect(page.locator("html")).toHaveAttribute("dir", lang === "ar" ? "rtl" : "ltr");
       await ready(page, t.plan.run);
-      await expectNoSeriousViolations(page, `${lang} ${theme} plan`);
+      await expectNoSeriousViolations(page, "plan", { lang, theme });
 
       await page.getByRole("button", { name: t.plan.run }).click();
       await expect(confirmation(page)).toBeVisible();
-      await expectNoSeriousViolations(page, `${lang} ${theme} confirmation`);
+      await expectNoSeriousViolations(page, "confirmation", { lang, theme });
       await answer(page, "primary");
 
       // The failed step, with its Retry, Skip and Stop, and the undo countdown above.
       await expect(page.getByRole("button", { name: t.step.retry, exact: true })).toBeVisible();
-      await expectNoSeriousViolations(page, `${lang} ${theme} failed step and undo window`);
+      await expectNoSeriousViolations(page, "failed step and undo window", { lang, theme });
       await page.getByRole("button", { name: t.step.retry, exact: true }).click();
       await expect(confirmation(page)).toBeVisible();
       await page.keyboard.press("p"); // no effect while waiting; the dialog stays
       await page.keyboard.press("s");
       await expectPlanState(page, "stopped");
       await expect(page.locator(".summary")).toBeVisible();
-      await expectNoSeriousViolations(page, `${lang} ${theme} stopped, with summary and toasts`);
+      await expectNoSeriousViolations(page, "stopped, with summary and toasts", { lang, theme });
 
       await page.getByRole("button", { name: t.run.newPlan }).click();
       for (let i = 0; i < 12; i += 1) await page.locator(".stoa-reorder__remove").first().click();
       await expect(page.getByText(t.plan.emptyTitle)).toBeVisible();
-      await expectNoSeriousViolations(page, `${lang} ${theme} empty plan`);
+      await expectNoSeriousViolations(page, "empty plan", { lang, theme });
     });
 
 for (const lang of LANGS)
@@ -60,14 +60,14 @@ for (const lang of LANGS)
       const page = await slow.newPage();
       await page.goto(`/?lang=${lang}&theme=${theme}`);
       await expect(page.getByRole("progressbar", { name: t.service.starting })).toBeVisible();
-      await expectNoSeriousViolations(page, `${lang} ${theme} starting`);
+      await expectNoSeriousViolations(page, "starting", { lang, theme });
       await slow.close();
       // Failed: workers blocked.
       const blocked = await browser.newContext({ serviceWorkers: "block" });
       const second = await blocked.newPage();
       await second.goto(`/?lang=${lang}&theme=${theme}`);
       await expect(second.getByText(t.service.failedTitle)).toBeVisible();
-      await expectNoSeriousViolations(second, `${lang} ${theme} worker failed`);
+      await expectNoSeriousViolations(second, "worker failed", { lang, theme });
       await blocked.close();
     });
   }

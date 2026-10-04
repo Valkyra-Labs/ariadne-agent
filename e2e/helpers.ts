@@ -1,16 +1,21 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { strings } from "../src/i18n";
 
 export const en = strings.en;
 
-export async function expectNoSeriousViolations(page: Page, where: string) {
+/** `scan`, when given, names the language and theme scanned; with `where`
+ * as the state, it is recorded as an annotation that scripts/badges.mjs
+ * reads to state the axe matrix. */
+export async function expectNoSeriousViolations(page: Page, where: string, scan?: { lang: string; theme: string }) {
   // A dialog or a toast that is still fading in has a contrast it will not
   // keep; axe looks at the page once every animation has ended.
   await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getComputedTiming().iterations === Infinity));
   const results = await new AxeBuilder({ page }).analyze();
   const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
-  expect(serious.map((v) => `${where}: ${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+  const label = scan ? `${scan.lang} ${scan.theme} ${where}` : where;
+  expect(serious.map((v) => `${label}: ${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
+  if (scan) test.info().annotations.push({ type: "axe-scan", description: JSON.stringify({ ...scan, state: where }) });
 }
 
 export const layout = (page: Page) => page.locator(".layout");

@@ -27,14 +27,14 @@ async function expectNoRepeats(page: Page) {
   }
 }
 
-test("first load: the worker takes control without a reload and serves the stream", async ({ page }) => {
+test("first load: the worker takes control without a reload and serves the stream", async ({ page, baseURL }) => {
   // Without the worker the static server answers with the page itself.
   expect((await page.request.get("/api/agent")).headers()["content-type"]).toContain("text/html");
   await page.goto("/?scale=0.05");
   await ready(page);
   expect(await controlled(page)).toBe(true);
   const scope = await page.evaluate(async () => (await navigator.serviceWorker.getRegistration())?.scope);
-  expect(scope).toBe("http://localhost:4177/");
+  expect(scope).toBe(`${baseURL}/`);
   // The worker answers the engine's request shape; a bad request gets its code.
   const answer = await page.evaluate(() => fetch("api/agent").then(async (r) => ({ status: r.status, body: await r.json() })));
   expect(answer).toEqual({ status: 400, body: { ok: false, error: "missing_plan" } });
@@ -63,13 +63,13 @@ test("a reload is controlled from the start, and a forced reload is claimed agai
   await expect(runSteps(page).nth(1)).toContainText("Done");
 });
 
-test("a new worker deployed during a run takes over, and the run goes on without a gap or a repeat", async ({ page, context }) => {
+test("a new worker deployed during a run takes over, and the run goes on without a gap or a repeat", async ({ page, context, baseURL }) => {
   await page.goto("/?scale=0.3");
   await ready(page);
   await page.getByRole("button", { name: en.plan.run }).click();
   await expect(runSteps(page).nth(0)).toContainText(/Running|Done/);
   // The next deployment: the served script changes, the browser updates it.
-  await context.addCookies([{ name: "ariadne-sw-revision", value: "2", url: "http://localhost:4177" }]);
+  await context.addCookies([{ name: "ariadne-sw-revision", value: "2", url: baseURL }]);
   const changed = await page.evaluate(async () => {
     const registration = await navigator.serviceWorker.getRegistration();
     const change = new Promise<string>((resolve) => navigator.serviceWorker.addEventListener("controllerchange", () => resolve("changed"), { once: true }));
