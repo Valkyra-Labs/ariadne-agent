@@ -1,5 +1,18 @@
 # Ariadne
 
+[![CI](https://github.com/Valkyra-Labs/ariadne-agent/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Valkyra-Labs/ariadne-agent/actions/workflows/ci.yml)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](#license)
+[![Unit tests](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Valkyra-Labs/ariadne-agent/badges/unit-tests.json)](#badges)
+[![e2e](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Valkyra-Labs/ariadne-agent/badges/e2e.json)](#badges)
+[![axe](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Valkyra-Labs/ariadne-agent/badges/axe.json)](#badges)
+[![Lighthouse accessibility](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Valkyra-Labs/ariadne-agent/badges/lighthouse-accessibility.json)](#badges)
+[![Lighthouse best practices](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Valkyra-Labs/ariadne-agent/badges/lighthouse-best-practices.json)](#badges)
+[![Lighthouse SEO](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Valkyra-Labs/ariadne-agent/badges/lighthouse-seo.json)](#badges)
+[![Bundle gzip](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/Valkyra-Labs/ariadne-agent/badges/bundle-size.json)](#badges)
+
+The test, axe, Lighthouse and size badges are measured and published by
+CI from `main`; what each one counts is under [Badges](#badges).
+
 An agent run you can stop. Give the agent a task and say how much it may
 do without asking; read its plan, reorder it, remove steps, mark the ones
 that must ask first; run it and watch every step. Risky steps wait for
@@ -78,7 +91,37 @@ pnpm measure      # docs/MEASUREMENTS.md
 ```
 
 `pnpm e2e` builds the app and runs Playwright with axe-core against the
-production build on port 4177, Service Worker included.
+production build on port 4177, Service Worker included; `E2E_PORT`
+moves it to another port, as CI does:
+
+```bash
+E2E_PORT=4181 pnpm e2e
+```
+
+### Badges
+
+CI checks out this repository, stoa-system and ariadne-runner side by
+side, builds the engine and Stoa, then builds and tests the app. Each
+green run on `main` publishes the dynamic badges to the `badges` branch,
+as JSON that img.shields.io reads; `scripts/badges.mjs` builds them from
+that run's own output and stops, publishing nothing, when a value cannot
+be read.
+
+- Unit tests: Vitest tests passed (`pnpm test`).
+- e2e: Playwright tests passed in Chromium against `vite preview` of the
+  build, Service Worker included (`e2e/`).
+- axe: axe-core 4.13.0 in the e2e, on each of the seven states listed
+  under [Accessibility](#accessibility) in English, Russian and Arabic,
+  light and dark; a serious or critical violation fails the run. The
+  scans outside that matrix (in `e2e/agent.spec.ts` and
+  `e2e/worker.spec.ts`) fail the run too but are not counted.
+- Lighthouse: Lighthouse 12 accessibility, best practices and SEO scores
+  for the home page served by `vite preview` with the built Service
+  Worker, the lower of the desktop and mobile runs. Performance is not
+  shown: on a shared CI runner it measures the runner.
+- Bundle gzip: every JavaScript and CSS file in `dist/`, gzip level 9,
+  summed, the Service Worker (`sw.js`) included. The fonts and
+  `index.html` are not included.
 
 ## Accessibility
 
