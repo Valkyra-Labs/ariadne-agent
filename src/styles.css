@@ -1,0 +1,68 @@
+/* Every weight the interface uses, in both scripts, so the browser never
+   synthesises bold. */
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+@import "@fontsource/ibm-plex-sans-arabic/400.css";
+@import "@fontsource/ibm-plex-sans-arabic/500.css";
+@import "@fontsource/ibm-plex-sans-arabic/600.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
+@import "@valkyra-labs/stoa-react/styles.css";
+
+:root {
+  color-scheme: light dark;
+  font-family: var(--stoa-font-family-sans);
+  font-size: var(--stoa-font-size-md);
+  background: var(--stoa-color-bg);
+  color: var(--stoa-color-text);
+}
+/* A chosen theme also sets the scheme of the browser's own controls. */
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+html, body, #root { block-size: 100%; }
+body { margin: 0; background: var(--stoa-color-bg); }
+p { margin: 0; }
+.muted { color: var(--stoa-color-text-muted); font-size: var(--stoa-font-size-sm); }
+.actions { display: flex; flex-wrap: wrap; gap: var(--stoa-space-2); align-items: center; }
+
+/* Two columns on a wide screen: the task, plan and run; the summary and
+   the log beside them. One column on a narrow one. */
+.layout {
+  display: grid; gap: var(--stoa-space-4);
+  grid-template-columns: minmax(0, 1fr);
+}
+.layout__main, .layout__side { display: grid; gap: var(--stoa-space-4); align-content: start; min-inline-size: 0; }
+@media (min-width: 1024px) {
+  .layout { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+}
+
+.stoa-panel { display: grid; gap: var(--stoa-space-3); align-content: start; }
+.stoa-panel__title { margin: 0; }
+
+.task__fields { display: flex; flex-wrap: wrap; gap: var(--stoa-space-4); align-items: end; }
+.task__autonomy { display: grid; gap: var(--stoa-space-2); }
+.facts { display: flex; flex-wrap: wrap; gap: var(--stoa-space-2) var(--stoa-space-6); margin: 0; }
+.facts dt { color: var(--stoa-color-text-muted); font-size: var(--stoa-font-size-sm); }
+.facts dd { margin: 0; }
+
+.facts-line {
+  display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--stoa-space-1) var(--stoa-space-3);
+  color: var(--stoa-color-text-muted); font-size: var(--stoa-font-size-sm);
+}
+.step-text { color: var(--stoa-color-text); }
+
+/* The run's controls stay in view while the steps scroll under them. */
+.run-bar {
+  position: sticky; inset-block-start: 0; z-index: 1;
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--stoa-space-2) var(--stoa-space-4);
+  margin-inline: calc(-1 * var(--stoa-space-3)); padding: var(--stoa-space-2) var(--stoa-space-3);
+  background: var(--stoa-color-surface);
+  border-block-end: 1px solid var(--stoa-color-border);
+}
+.run-bar__progress { font-size: var(--stoa-font-size-sm); color: var(--stoa-color-text-muted); }
+
+.draft-kind { color: var(--stoa-color-text-muted); font-size: var(--stoa-font-size-sm); }
+.draft-heading { font-weight: var(--stoa-font-weight-semibold); }
+.draft-objects { margin: 0; padding-inline-start: var(--stoa-space-6); }
+.stoa-dialog__body { display: grid; gap: var(--stoa-space-2); }
