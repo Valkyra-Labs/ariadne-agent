@@ -1,0 +1,40 @@
+{
+  "name": "ariadne-agent",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.25.0",
+  "license": "MIT OR Apache-2.0",
+  "scripts": {
+    "dev": "vite --port 5177 --strictPort",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --port 4177 --strictPort",
+    "typecheck": "tsc -b",
+    "test": "vitest run --exclude e2e/**",
+    "e2e": "playwright test",
+    "measure": "node scripts/measure.mjs"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "@fontsource/ibm-plex-sans": "5.3.0",
+    "@fontsource/ibm-plex-sans-arabic": "5.3.0",
+    "@valkyra-labs/stoa-react": "link:../stoa-system/packages/react",
+    "@valkyra-labs/stoa-tokens": "link:../stoa-system/packages/tokens",
+    "@xstate/react": "6.1.0",
+    "ariadne-runner": "link:../ariadne-runner",
+    "react": "19.3.0",
+    "react-aria-components": "1.21.1",
+    "react-dom": "19.3.0",
+    "xstate": "5.32.6"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
+    "@types/node": "^22.20.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "typescript": "6.0.3",
+    "vite": "8.3.1",
+    "vitest": "5.0.2"
+  }
+}
