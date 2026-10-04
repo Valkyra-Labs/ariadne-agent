@@ -9,7 +9,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --port 4177 --strictPort",
     "typecheck": "tsc -b",
-    "test": "vitest run --exclude e2e/**",
+    "test": "vitest run --exclude 'e2e/**'",
     "e2e": "playwright test",
     "measure": "node scripts/measure.mjs"
   },
