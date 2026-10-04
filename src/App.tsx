@@ -97,7 +97,9 @@ export function App({ lang, onLang, themeChoice, onTheme }: AppProps) {
   useEffect(() => {
     if (service.status !== "starting") return;
     let live = true;
-    void startWorker(BASE).then((result) => {
+    void startWorker(BASE)
+      .catch((error: unknown): Awaited<ReturnType<typeof startWorker>> => ({ ok: false, error: "sw_registration_failed", detail: String(error) }))
+      .then((result) => {
       if (!live) return;
       if (result.ok) {
         session.setTransport(workerTransport(`${BASE}api/agent`));

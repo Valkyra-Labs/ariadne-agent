@@ -47,12 +47,15 @@ export async function startWorker(base: string, timeoutMs = CONTROL_TIMEOUT_MS):
   const container = navigator.serviceWorker;
   const wasControlled = container.controller !== null;
   mark("sw-register");
-  let registration: ServiceWorkerRegistration;
+  let registration: ServiceWorkerRegistration | undefined;
   try {
     registration = await container.register(`${base}sw.js`, { scope: base, updateViaCache: "none" });
   } catch (error) {
     return { ok: false, error: "sw_registration_failed", detail: String(error) };
   }
+  // A browser (or an automation setting) that blocks workers can resolve
+  // the registration with nothing at all.
+  if (!registration || typeof registration !== "object") return { ok: false, error: "sw_registration_failed" };
   if (wasControlled) {
     mark("sw-controlled");
     return { ok: true, how: "controlled", registration };
