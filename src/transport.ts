@@ -1,10 +1,17 @@
 // How one segment of the run reaches the page.
 //
 // - "worker": an EventSource on `<base>api/agent`, answered by the Service
-//   Worker (src/sw.ts). A dropped connection is resumed by the browser with
-//   Last-Event-ID; a request the engine refuses is answered with JSON and an
-//   error code, which EventSource cannot read, so the page asks again with
-//   fetch to learn the code.
+//   Worker (src/sw.ts). A request the engine refuses is answered with JSON
+//   and an error code, which EventSource cannot read, so the page asks again
+//   with fetch to learn the code.
+//
+// A dropped segment is not left to EventSource's own reconnection: in
+// Chromium the reconnection request that reaches the Service Worker carries
+// no Last-Event-ID header, so the engine would replay the segment from its
+// first event (and, with drop=1, drop it again, for ever). The transport
+// closes the source and reports the drop; the session opens the next
+// segment itself with `after` set to the last event it has, which the
+// engine resumes from just the same.
 // - "page": the engine's in-process transport, in this tab, for a browser
 //   where the worker cannot run. Same segments, same events.
 import { REQUEST_ERRORS, RUN_EVENT_TYPES, WAITING_EVENT, connectInProcess, type RequestError, type RunEvent, type WaitingNotice } from "ariadne-runner";
@@ -21,8 +28,9 @@ export type SegmentHandlers = {
   onEvent(id: number, event: RunEvent): void;
   /** The segment reached a decision the page has not made; it has ended. */
   onWaiting(notice: WaitingNotice): void;
-  /** The connection dropped; the browser is reconnecting. */
-  onReconnecting(): void;
+  /** The segment ended before its last frame (a dropped connection); it
+   * is closed, and the session decides when to open the next one. */
+  onDropped(): void;
   /** The segment failed and will not resume by itself. */
   onFailed(error: StreamError): void;
 };
@@ -82,12 +90,10 @@ export function workerTransport(endpoint: string): Transport {
       };
       source.onerror = () => {
         if (closed) return;
-        if (source.readyState === EventSource.CLOSED) {
-          close();
-          void readStreamError(url).then((error) => handlers.onFailed(error));
-        } else {
-          handlers.onReconnecting();
-        }
+        const refused = source.readyState === EventSource.CLOSED;
+        close();
+        if (refused) void readStreamError(url).then((error) => handlers.onFailed(error));
+        else handlers.onDropped();
       };
       const onEvent = (raw: Event) => {
         if (closed) return;
@@ -131,14 +137,20 @@ export function pageTransport(): Transport {
         if (controller.signal.aborted) return;
         handlers.onOpen();
         try {
+          let last: RunEvent["type"] | null = null;
           for await (const item of items) {
             if (controller.signal.aborted) return;
-            if (item.kind === "event") handlers.onEvent(item.id, item.event);
-            else {
+            if (item.kind === "event") {
+              last = item.event.type;
+              handlers.onEvent(item.id, item.event);
+            } else {
               handlers.onWaiting(item.notice);
               return;
             }
           }
+          // A segment ends with a waiting notice or the run's last event;
+          // anything else was cut short (drop=1).
+          if (!controller.signal.aborted && last !== "plan.finished" && last !== "plan.stopped") handlers.onDropped();
         } catch {
           if (!controller.signal.aborted) handlers.onFailed("stream_lost");
         }

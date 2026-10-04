@@ -24,6 +24,7 @@ import {
   type RunEvent,
   type WaitingNotice,
 } from "ariadne-runner";
+import { RETRY_MS } from "ariadne-runner/sse";
 import { mark } from "./marks";
 import type { Segment, StreamError, Transport, TransportKind } from "./transport";
 
@@ -38,7 +39,7 @@ export type StreamStatus =
   | "paused"
   /** The run waits for the person's decision; no segment is open. */
   | "waiting"
-  /** The connection dropped and the browser is resuming it. */
+  /** The connection dropped; the next segment opens shortly. */
   | "reconnecting"
   /** A segment failed; Retry opens it again. */
   | "failed"
@@ -71,6 +72,9 @@ export type SessionOptions = {
 
 export type PlanActor = Actor<typeof planMachine>;
 
+/** Drops in a row, with no event between them, before the session gives up. */
+export const MAX_DROPS = 5;
+
 let sessions = 0;
 function sessionId(): string {
   sessions += 1;
@@ -85,6 +89,8 @@ export class RunSession {
   #decisions: Decision[] = [];
   #pendingStop = false;
   #reconnecting = false;
+  #drops = 0;
+  #retryTimer: ReturnType<typeof setTimeout> | null = null;
   #snapshot: SessionSnapshot = {
     status: "idle",
     failure: null,
@@ -152,16 +158,19 @@ export class RunSession {
   }
 
   #close() {
+    if (this.#retryTimer) clearTimeout(this.#retryTimer);
+    this.#retryTimer = null;
     this.#segment?.close();
     this.#segment = null;
   }
 
-  #open() {
+  #open(resuming = false) {
     this.#close();
     const transport = this.#transport;
     if (!transport) return;
-    this.#reconnecting = false;
-    this.#set({ status: "connecting", failure: null, waiting: null });
+    this.#reconnecting = resuming;
+    if (!resuming) this.#drops = 0;
+    this.#set({ status: resuming ? "reconnecting" : "connecting", failure: null, waiting: null });
     const segment: Segment = transport.open(this.query(), {
       onOpen: () => {
         if (this.#segment !== segment) return;
@@ -180,10 +189,21 @@ export class RunSession {
         this.#segment = null;
         this.#set({ status: "waiting", waiting: notice });
       },
-      onReconnecting: () => {
+      onDropped: () => {
         if (this.#segment !== segment) return;
-        this.#reconnecting = true;
+        this.#segment = null;
+        this.#drops += 1;
+        if (this.#drops > MAX_DROPS) {
+          this.#set({ status: "failed", failure: "stream_lost" });
+          return;
+        }
+        // The next segment, after the last event the page has; a little
+        // later each time, as EventSource would.
         this.#set({ status: "reconnecting" });
+        this.#retryTimer = setTimeout(() => {
+          this.#retryTimer = null;
+          if (this.#snapshot.status === "reconnecting") this.#open(true);
+        }, RETRY_MS * this.#drops);
       },
       onFailed: (error) => {
         if (this.#segment !== segment) return;
@@ -197,6 +217,7 @@ export class RunSession {
   #receive(id: number, event: RunEvent) {
     // A resumed segment never repeats an event; this keeps it so if one did.
     if (id <= this.#snapshot.lastEventId) return;
+    this.#drops = 0;
     const at = this.#now();
     this.plan.send({ type: "RUN_EVENT", event, at });
     if (event.type === "plan.started" && this.#pendingStop) {

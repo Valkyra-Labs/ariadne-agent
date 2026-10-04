@@ -7,11 +7,12 @@ import { RunSession } from "./session";
 import { timeScaleOf, streamParamsFrom, seedFrom } from "./scale";
 import { pageTransport, readStreamError, type SegmentHandlers, type Transport } from "./transport";
 
-/** Resolves once `check` holds, polling the event loop. */
-async function until(check: () => boolean, label: string, tries = 500) {
-  for (let i = 0; i < tries; i += 1) {
+/** Resolves once `check` holds, polling the event loop for up to `ms`. */
+async function until(check: () => boolean, label: string, ms = 5000) {
+  const deadline = Date.now() + ms;
+  while (Date.now() < deadline) {
     if (check()) return;
-    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 1));
   }
   throw new Error(`Timed out waiting for ${label}`);
 }
@@ -134,6 +135,17 @@ describe("a session", () => {
     expect(ids).toBe(expected);
   });
 
+  it("resumes a dropped segment after the last event it has, with nothing repeated", async () => {
+    const session = newSession(pageTransport(), "scale=0&drop=1");
+    const notices: string[] = [];
+    session.onNotice((n) => notices.push(n.kind));
+    await runToEnd(session);
+    expect(session.plan.getSnapshot().value).toBe("finished");
+    expect(notices).toContain("reconnected");
+    const expected = fullRun();
+    expect(events(session)).toEqual(expected.events.filter((e) => e.event.type !== "step.progress").map((e) => e.event.type));
+  });
+
   it("undoes a finished step within its window, and the log says so", async () => {
     const session = newSession();
     await runToEnd(session);
@@ -183,7 +195,7 @@ describe("stream errors", () => {
       onOpen() {},
       onEvent() {},
       onWaiting() {},
-      onReconnecting() {},
+      onDropped() {},
       onFailed: (e) => failures.push(e),
     });
     await until(() => failures.length > 0, "the failure");
