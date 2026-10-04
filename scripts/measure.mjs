@@ -20,7 +20,8 @@ const N_LOAD = QUICK ? 5 : 20;
 const sh = (cmd, env = {}) => execSync(cmd, { encoding: "utf8", env: { ...process.env, ...env } }).trim();
 
 function stats(values) {
-  const sorted = [...values].sort((a, b) => a - b);
+  const sorted = values.filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+  if (sorted.length !== values.length) throw new Error(`${values.length - sorted.length} samples missing`);
   const at = (q) => sorted[Math.min(sorted.length - 1, Math.ceil(q * sorted.length) - 1)];
   const r = (v) => Math.round(v * 10) / 10;
   return { n: sorted.length, median: r(at(0.5)), p95: r(at(0.95)), min: r(sorted[0]), max: r(sorted.at(-1)) };
@@ -81,6 +82,7 @@ try {
       throw new Error(`First load ${i} did not get a controlled page: ${errors.join("; ")} (${error})`);
     });
     await page.waitForFunction(() => performance.getEntriesByName("ariadne:sw-controlled").length > 0);
+    await page.waitForFunction(() => performance.getEntriesByName("first-contentful-paint").length > 0);
     firstLoad.fcp.push(await page.evaluate(() => performance.getEntriesByName("first-contentful-paint")[0]?.startTime ?? NaN));
     firstLoad.register.push(await between(page, "sw-register", "sw-controlled"));
     firstLoad.controlledFromNav.push(await mark(page, "sw-controlled"));
@@ -96,6 +98,7 @@ try {
     for (let i = 0; i < N_LOAD; i += 1) {
       await page.reload();
       await page.waitForFunction(() => performance.getEntriesByName("ariadne:sw-controlled").length > 0);
+      await page.waitForFunction(() => performance.getEntriesByName("first-contentful-paint").length > 0);
       reload.fcp.push(await page.evaluate(() => performance.getEntriesByName("first-contentful-paint")[0]?.startTime ?? NaN));
       reload.register.push(await between(page, "sw-register", "sw-controlled"));
     }
