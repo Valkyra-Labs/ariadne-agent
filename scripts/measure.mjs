@@ -1,5 +1,5 @@
 // Measurements for docs/MEASUREMENTS.md, in headless Chromium against the
-// production build served by `vite preview` (port 5191). Every number is
+// production build served by `vite preview` (port 5197, or MEASURE_PORT). Every number is
 // printed with its sample count, and the run is stamped with the commit,
 // the machine and the browser.
 //
@@ -12,7 +12,7 @@ import { gzipSync } from "node:zlib";
 import { chromium } from "@playwright/test";
 
 const QUICK = process.argv.includes("--quick");
-const PORT = 5191;
+const PORT = Number(process.env.MEASURE_PORT ?? 5197);
 const BASE = `http://localhost:${PORT}`;
 const N = QUICK ? 5 : 30;
 const N_LOAD = QUICK ? 5 : 20;
@@ -43,12 +43,14 @@ for (const file of readdirSync("dist/assets").filter((f) => /\.(js|css)$/.test(f
 }
 sh("pnpm exec vite build", { ARIADNE_BENCH: "1" });
 
+if (await fetch(BASE).then(() => true, () => false)) throw new Error(`Port ${PORT} is in use`);
 const server = spawn("pnpm", ["exec", "vite", "preview", "--outDir", "dist-bench", "--port", String(PORT), "--strictPort"], { stdio: "ignore" });
 await new Promise((resolve, reject) => {
   const started = Date.now();
   const poll = () =>
     fetch(BASE)
-      .then(resolve)
+      .then((r) => r.text())
+      .then((html) => (html.includes("<title>Ariadne</title>") ? resolve() : reject(new Error(`Port ${PORT} serves another application`))))
       .catch(() => (Date.now() - started > 20_000 ? reject(new Error("preview did not start")) : setTimeout(poll, 200)));
   poll();
 });
@@ -70,8 +72,14 @@ try {
   for (let i = 0; i < N_LOAD; i += 1) {
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
     await page.goto(BASE + "/");
-    await runButton(page).isEnabled();
+    await page.waitForFunction(() => performance.getEntriesByName("ariadne:sw-controlled").length > 0, null, { timeout: 15_000 }).catch(async (error) => {
+      await page.screenshot({ path: "test-results/measure-first-load.png" });
+      throw new Error(`First load ${i} did not get a controlled page: ${errors.join("; ")} (${error})`);
+    });
     await page.waitForFunction(() => performance.getEntriesByName("ariadne:sw-controlled").length > 0);
     firstLoad.fcp.push(await page.evaluate(() => performance.getEntriesByName("first-contentful-paint")[0]?.startTime ?? NaN));
     firstLoad.register.push(await between(page, "sw-register", "sw-controlled"));
