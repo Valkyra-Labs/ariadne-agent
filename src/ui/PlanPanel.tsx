@@ -1,7 +1,7 @@
 // The plan before it runs: the steps in their order, which can be moved,
 // removed and marked to ask first; conflicts between steps; Run.
 import type { ReactNode } from "react";
-import { Button, Callout, EmptyState, Panel, StepList, Switch, Tag, type Step, type TagTone } from "@valkyra-labs/stoa-react";
+import { Button, Callout, EmptyState, Panel, keepFocusInPlace, StepList, Switch, Tag, type Step, type TagTone } from "@valkyra-labs/stoa-react";
 import { findConflicts, requiresConfirmation, type Autonomy, type PlanStep, type Risk } from "ariadne-runner";
 import { stepTitle, type Text } from "../text";
 
@@ -109,7 +109,12 @@ export function PlanPanel({ x, steps, autonomy, service, canRun, onRun, onRestor
             steps={items}
             reorderable
             onReorder={(next) => onReorder(next.map((s) => s.id))}
-            onRemove={(step) => onRemove(step.id)}
+            onRemove={(step) => {
+              // The last step goes with the list: the focus moves to the
+              // empty state's Restore, which takes the list's place.
+              if (steps.length === 1 && document.activeElement) keepFocusInPlace(document.activeElement);
+              onRemove(step.id);
+            }}
           />
         </>
       )}

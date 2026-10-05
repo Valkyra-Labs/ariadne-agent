@@ -40,6 +40,10 @@ p { margin: 0; }
 
 .stoa-panel { display: grid; gap: var(--stoa-space-3); align-content: start; }
 .stoa-panel__title { margin: 0; }
+/* The run's heading holds the focus after a decision (RunPanel); drawn as
+   Stoa draws focus. */
+.run > .stoa-panel__title:focus { outline: none; }
+.run > .stoa-panel__title:focus-visible { outline: var(--stoa-focus-width) solid var(--stoa-color-focus); outline-offset: 2px; }
 
 .task__fields { display: flex; flex-wrap: wrap; gap: var(--stoa-space-4); align-items: end; }
 .task__autonomy { display: grid; gap: var(--stoa-space-2); }

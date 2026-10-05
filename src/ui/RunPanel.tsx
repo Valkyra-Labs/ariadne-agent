@@ -1,7 +1,7 @@
 // The run as it happens: the controls (Stop always first), what the stream
 // is doing, and every step with its live status, its result and its undo.
 import { useEffect, useRef, type ReactNode } from "react";
-import { Button, ButtonGroup, Callout, Panel, ProgressBar, StatusBadge, StepList, Toolbar, type Step, type StatusTone } from "@valkyra-labs/stoa-react";
+import { Button, ButtonGroup, Callout, Panel, ProgressBar, StatusBadge, StepList, Toolbar, keepFocusInPlace, type Step, type StatusTone } from "@valkyra-labs/stoa-react";
 import { requiresConfirmation, stepStatusOf, type Autonomy } from "ariadne-runner";
 import type { SessionSnapshot, StreamStatus } from "../session";
 import { errorText, stepTitle, summaryText, undoText, type Text } from "../text";
@@ -63,7 +63,33 @@ export function RunPanel(props: RunPanelProps) {
   }).length;
   const paused = session.status === "paused";
   const retryRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
   const errorStep = steps.find((s) => s.snapshot.matches("error"))?.id ?? null;
+
+  // Where the focus goes when a decision removes or disables the control
+  // that had it (Run, Retry, Skip, Stop): the run's heading, one Tab before
+  // Stop. A confirmation opened from there returns the focus there too.
+  // Not scrolled to: the steps the person is reading stay in view.
+  const focusRun = () => {
+    const section = barRef.current?.closest("section");
+    const heading = section ? document.getElementById(section.getAttribute("aria-labelledby") ?? "") : null;
+    if (!heading) return;
+    heading.tabIndex = -1;
+    heading.focus({ preventScroll: true });
+  };
+  const decide = (id: string, command: "retry" | "skip") => {
+    focusRun();
+    props.onDecide(id, command);
+  };
+  const stop = () => {
+    focusRun();
+    props.onStop();
+  };
+
+  // Run removed the plan, and its button with it: the focus starts at the run.
+  useEffect(() => {
+    if (!document.activeElement || document.activeElement === document.body) focusRun();
+  }, []);
 
   // A failed step waits for a decision: its Retry button takes focus, as a
   // confirmation's dialog does, so the keyboard is where the run is.
@@ -108,11 +134,11 @@ export function RunPanel(props: RunPanelProps) {
         if (!stopRequested)
           actions = (
             <div ref={retryRef} className="actions">
-              <Button variant="primary" onPress={() => props.onDecide(id, "retry")}>
+              <Button variant="primary" onPress={() => decide(id, "retry")}>
                 {t.step.retry}
               </Button>
-              <Button onPress={() => props.onDecide(id, "skip")}>{t.step.skip}</Button>
-              <Button variant="danger" onPress={props.onStop}>
+              <Button onPress={() => decide(id, "skip")}>{t.step.skip}</Button>
+              <Button variant="danger" onPress={stop}>
                 {t.step.stopRun}
               </Button>
             </div>
@@ -137,7 +163,13 @@ export function RunPanel(props: RunPanelProps) {
         );
         if (!irreversible)
           actions = (
-            <Button onPress={() => props.onUndo(id)} aria-label={`${t.step.undo}: ${title}`}>
+            <Button
+              onPress={(e) => {
+                keepFocusInPlace(e.target);
+                props.onUndo(id);
+              }}
+              aria-label={`${t.step.undo}: ${title}`}
+            >
               {t.step.undo}
             </Button>
           );
@@ -155,9 +187,9 @@ export function RunPanel(props: RunPanelProps) {
 
   return (
     <Panel title={t.run.panel} className="run">
-      <div className="run-bar">
+      <div ref={barRef} className="run-bar">
         <Toolbar label={t.run.controls}>
-          <Button variant="danger" onPress={props.onStop} isDisabled={!canStop} shortcut={{ key: "s" }}>
+          <Button variant="danger" onPress={stop} isDisabled={!canStop} shortcut={{ key: "s" }}>
             {t.run.stop}
           </Button>
           <ButtonGroup>
@@ -166,7 +198,14 @@ export function RunPanel(props: RunPanelProps) {
             </Button>
           </ButtonGroup>
           {ended && (
-            <Button variant="primary" onPress={props.onNewPlan}>
+            <Button
+              variant="primary"
+              onPress={(e) => {
+                // The new plan's Run takes the place of the run panel.
+                keepFocusInPlace(e.target);
+                props.onNewPlan();
+              }}
+            >
               {t.run.newPlan}
             </Button>
           )}

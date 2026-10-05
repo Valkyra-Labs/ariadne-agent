@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useSelector } from "@xstate/react";
 import {
   AlertDialog,
@@ -15,6 +16,7 @@ import {
   ToastQueue,
   ToastRegion,
   groupShortcuts,
+  keepFocusInPlace,
   useLanguagePreference,
   useShortcuts,
   useThemePreference,
@@ -253,7 +255,8 @@ export function App({ lang, onLang, themeChoice, onTheme }: AppProps) {
           <div className="actions">
             <Button
               variant="primary"
-              onPress={() => {
+              onPress={(e) => {
+                keepFocusInPlace(e.target);
                 setAttempt((a) => a + 1);
                 setService({ status: "starting" });
               }}
@@ -261,9 +264,14 @@ export function App({ lang, onLang, themeChoice, onTheme }: AppProps) {
               {t.service.retry}
             </Button>
             <Button
-              onPress={() => {
-                session.setTransport(pageTransport());
-                setService({ status: "page" });
+              onPress={(e) => {
+                // Run can be pressed now, and it is the next thing to do.
+                const plan = e.target.closest(".plan");
+                flushSync(() => {
+                  session.setTransport(pageTransport());
+                  setService({ status: "page" });
+                });
+                plan?.querySelector<HTMLButtonElement>(".plan-bar button")?.focus();
               }}
             >
               {t.service.usePage}
