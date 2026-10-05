@@ -118,6 +118,19 @@ describe("a session", () => {
     expect(plan.context.stepRefs.s2!.getSnapshot().value).toBe("skipped");
   });
 
+  it("is stopping from the press of Stop until the run ends, even before the run has started", async () => {
+    const session = newSession(pageTransport(), "scale=0.02");
+    session.start();
+    expect(session.isStopping()).toBe(false);
+    // Before plan.started: the stop waits for the run to start.
+    expect(session.plan.getSnapshot().value).toBe("approved");
+    expect(session.stop()).toBe(true);
+    expect(session.isStopping()).toBe(true);
+    await until(() => session.getSnapshot().status === "ended", "the end");
+    expect(session.plan.getSnapshot().value).toBe("stopped");
+    expect(session.isStopping()).toBe(false);
+  });
+
   it("pauses between events and resumes after the last one, losing nothing", async () => {
     const session = newSession(pageTransport(), "scale=0.02");
     session.plan.send({ type: "SET_AUTONOMY", autonomy: "ask_none" });

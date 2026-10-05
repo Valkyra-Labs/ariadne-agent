@@ -328,7 +328,7 @@ export function App({ lang, onLang, themeChoice, onTheme }: AppProps) {
               steps={steps}
               autonomy={ctx.autonomy}
               session={stream}
-              stopRequested={ctx.stopRequested}
+              stopRequested={session.isStopping()}
               ended={ended}
               canStop={canStop}
               onStop={stop}

@@ -37,6 +37,7 @@ export type RunPanelProps = {
   steps: StepView[];
   autonomy: Autonomy;
   session: SessionSnapshot;
+  /** Stop was asked for (the run may not have started yet). */
   stopRequested: boolean;
   ended: boolean;
   canStop: boolean;
@@ -176,7 +177,12 @@ export function RunPanel(props: RunPanelProps) {
           )}
         </Toolbar>
         <span className="run-bar__progress">{t.run.progress(f.int(processed), f.int(steps.length))}</span>
-        <StatusBadge tone={STATUS_TONE[session.status]}>{t.run.status[session.status]}</StatusBadge>
+        {stopRequested && !ended ? (
+          // The stream reopens to carry the stop; the run is not "running" on.
+          <StatusBadge tone="warning">{t.run.stoppingTitle}</StatusBadge>
+        ) : (
+          <StatusBadge tone={STATUS_TONE[session.status]}>{t.run.status[session.status]}</StatusBadge>
+        )}
       </div>
       {props.notice}
       {stopRequested && !ended && (

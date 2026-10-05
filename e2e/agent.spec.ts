@@ -1,7 +1,7 @@
 // The main tasks, by keyboard where a person would use it: editing the
 // plan, running it, the confirmations, Stop, Pause, the undo window, the
 // agent's request to change a step, the shortcuts and the log.
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { dialog, en, expectNoSeriousViolations, expectPlanState, logLines, ready, runSteps, confirmation } from "./helpers";
 
 test("the plan is edited with the keyboard: moved, marked, removed, emptied and restored", async ({ page }) => {
@@ -117,6 +117,27 @@ test("Stop while a step runs: that step finishes, no new step starts", async ({ 
     await expect(runSteps(page).nth(i)).not.toContainText("Waiting");
     await expect(runSteps(page).nth(i)).toContainText("the run was stopped");
   }
+});
+
+/** A run with slow steps (so the stop takes a while), stopped while its
+ * first step runs. */
+async function stopWhileRunning(page: Page) {
+  await page.goto("/?scale=4");
+  await ready(page);
+  await page.getByRole("radio", { name: en.autonomy.ask_none }).click();
+  await page.getByRole("button", { name: en.plan.run }).click();
+  await expect(runSteps(page).nth(0)).toContainText("Running");
+  await page.getByRole("button", { name: en.run.stop }).click();
+}
+
+test("while the run stops, the badge says Stopping", async ({ page }) => {
+  await stopWhileRunning(page);
+  const bar = page.locator(".run-bar");
+  await expect(bar.locator(".stoa-badge--warning")).toHaveText(new RegExp(en.run.stoppingTitle));
+  await expect(bar).not.toContainText(en.run.status.streaming);
+  await expect(bar).not.toContainText(en.run.status.connecting);
+  await expectPlanState(page, "stopped");
+  await expect(bar).toContainText(en.run.status.ended);
 });
 
 test("Pause holds the run between events; Resume goes on from the next one", async ({ page }) => {

@@ -257,6 +257,14 @@ export class RunSession {
     return true;
   }
 
+  /** Stop was asked for and the run has not ended yet: the step in
+   * progress finishes, no new one starts. */
+  isStopping(): boolean {
+    const snapshot = this.plan.getSnapshot();
+    if (snapshot.matches("stopped") || snapshot.matches("finished")) return false;
+    return this.#pendingStop || snapshot.context.stopRequested;
+  }
+
   canStop(): boolean {
     const snapshot = this.plan.getSnapshot();
     return (snapshot.matches("running") || snapshot.matches("approved")) && !snapshot.context.stopRequested && !this.#pendingStop;
