@@ -11,6 +11,37 @@ const loadedFamilies = (page: import("@playwright/test").Page) =>
     return [...document.fonts].filter((f) => f.status === "loaded").map((f) => f.family.replace(/["']/g, ""));
   });
 
+for (const how of ["link", "stored"] as const)
+  test(`lang and dir are set before the app's script runs (${how} choice)`, async ({ page }) => {
+    if (how === "stored") {
+      await page.goto("/");
+      await ready(page);
+      await page.getByRole("radio", { name: "AR", exact: true }).click();
+      await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+    }
+    // The bundle is held back: what the browser lays out meanwhile is the
+    // page as the HTML alone makes it.
+    let release = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route(/\/assets\/.*\.js$/, async (route) => {
+      await held;
+      await route.continue();
+    });
+    await page.goto(how === "link" ? "/?lang=ar" : "/", { waitUntil: "commit" });
+    await page.waitForSelector("#root", { state: "attached" });
+    expect(await page.evaluate(() => [document.documentElement.lang, document.documentElement.dir])).toEqual(["ar", "rtl"]);
+    expect(await page.evaluate(() => document.getElementById("root")!.childElementCount)).toBe(0);
+    release();
+    await ready(page, strings.ar.plan.run);
+  });
+
+test("an unknown language in the link keeps the page in English", async ({ page }) => {
+  await page.goto("/?lang=xx", { waitUntil: "commit" });
+  await page.waitForSelector("#root", { state: "attached" });
+  expect(await page.evaluate(() => [document.documentElement.lang, document.documentElement.dir])).toEqual(["en", "ltr"]);
+  await ready(page);
+});
+
 test("Arabic digits in the numeric face are Noto Sans Arabic's, and the Arabic face is preloaded", async ({ page }) => {
   const t = strings.ar;
   await page.goto("/?lang=ar&scale=0.05");

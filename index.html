@@ -7,6 +7,26 @@
     <!-- No icon yet; an empty one keeps the browser from asking for /favicon.ico. -->
     <link rel="icon" href="data:," />
     <title>Ariadne</title>
+    <!-- The language before the first paint: lang and dir from the link
+         (?lang=) or the stored choice, read as the application reads them
+         (src/firstPaint.test.ts keeps the two in step), so an Arabic page
+         is laid out right to left from its first frame. -->
+    <script>
+      (function () {
+        var languages = ["en", "ru", "ar"];
+        var lang = new URLSearchParams(location.search).get("lang");
+        if (languages.indexOf(lang) < 0) {
+          try {
+            lang = localStorage.getItem("ariadne-agent.lang");
+          } catch (e) {
+            lang = null;
+          }
+        }
+        if (languages.indexOf(lang) < 0) return;
+        document.documentElement.lang = lang;
+        document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
