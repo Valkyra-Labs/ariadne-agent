@@ -83,7 +83,12 @@ test("a run by keyboard: R runs, confirmations focus the safe action, a failed s
   await expect(confirmation(page)).toHaveCount(0);
   await expect(page.locator(".summary")).toContainText("The run was stopped after step 6.");
   await expect(runSteps(page).nth(6)).toContainText("the run was stopped");
-  for (let i = 7; i < 12; i += 1) await expect(runSteps(page).nth(i)).toContainText("Waiting");
+  // The steps the run never reached say so; none is left waiting.
+  for (let i = 7; i < 12; i += 1) {
+    await expect(runSteps(page).nth(i)).toContainText("Skipped");
+    await expect(runSteps(page).nth(i)).toContainText("the run was stopped");
+    await expect(runSteps(page).nth(i)).not.toContainText(en.step.willAsk);
+  }
   await expect(page.locator('[role="status"][aria-live="polite"][aria-atomic="true"]').last()).toHaveText(en.announce.stopped);
   const log = await logLines(page);
   expect(log.filter((l) => l.includes("You skipped step 3."))).toHaveLength(1);
@@ -108,7 +113,10 @@ test("Stop while a step runs: that step finishes, no new step starts", async ({ 
   expect(after.length).toBeLessThanOrEqual(3);
   expect(after.filter((l) => l.includes("started"))).toEqual([]);
   expect(after.at(-1)).toMatch(/Run stopped after step [12]\./);
-  for (let i = 2; i < 12; i += 1) await expect(runSteps(page).nth(i)).toContainText("Waiting");
+  for (let i = 2; i < 12; i += 1) {
+    await expect(runSteps(page).nth(i)).not.toContainText("Waiting");
+    await expect(runSteps(page).nth(i)).toContainText("the run was stopped");
+  }
 });
 
 test("Pause holds the run between events; Resume goes on from the next one", async ({ page }) => {
