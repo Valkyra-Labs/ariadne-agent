@@ -302,6 +302,31 @@ test("the log is copied as text", async ({ page, context }) => {
   expect(copied).toContain("Run stopped after step 2.");
 });
 
+test("the log follows its newest line while the run goes on", async ({ page }) => {
+  await page.goto("/?scale=0.05");
+  await ready(page);
+  await page.getByRole("radio", { name: en.autonomy.ask_none }).click();
+  await page.getByRole("button", { name: en.plan.run }).click();
+  const region = page.locator(".log .stoa-code__scroll");
+  const read = () => region.evaluate((el) => ({ scrolls: el.scrollHeight > el.clientHeight, atEnd: el.scrollHeight - el.scrollTop - el.clientHeight < 2 }));
+  // At each point the run waits, the newest line is in view.
+  let waits = 0;
+  for (;;) {
+    if ((await page.locator(".layout").getAttribute("data-plan-state")) === "finished") break;
+    const alert = confirmation(page);
+    const retry = page.getByRole("button", { name: en.step.retry, exact: true });
+    await expect(alert.or(retry).or(page.locator('.layout[data-plan-state="finished"]'))).toBeVisible({ timeout: 15_000 });
+    if ((await page.locator(".layout").getAttribute("data-plan-state")) === "finished") break;
+    expect((await read()).atEnd).toBe(true);
+    waits += 1;
+    if (await alert.isVisible()) await alert.getByRole("button").last().click();
+    else await retry.click();
+  }
+  expect(waits).toBeGreaterThan(2);
+  expect(await read()).toEqual({ scrolls: true, atEnd: true });
+  expect((await logLines(page)).at(-1)).toContain("Run finished");
+});
+
 test("an Arabic log keeps each line's time and level at the left, without invisible bidi marks", async ({ page }) => {
   const t = strings.ar;
   await page.goto("/?lang=ar&scale=0.05");
