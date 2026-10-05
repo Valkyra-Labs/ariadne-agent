@@ -55,11 +55,11 @@ export function TaskPanel({ x, seed, autonomy, editable, onSeed, onAutonomy }: T
       <div className="task__autonomy">
         <ChoiceGroup<Autonomy>
           label={t.task.autonomy}
+          description={t.autonomyHelp[autonomy]}
           value={autonomy}
           onChange={onAutonomy}
           choices={AUTONOMIES.map((level) => ({ id: level, label: t.autonomy[level] }))}
         />
-        <p className="muted">{t.autonomyHelp[autonomy]}</p>
       </div>
       <p className="muted">{t.task.scripted}</p>
     </Panel>
