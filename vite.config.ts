@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, searchForWorkspaceRoot } from "vite";
 import react from "@vitejs/plugin-react";
 import { serviceWorker } from "./vite-sw.ts";
 
@@ -16,6 +16,21 @@ export default defineConfig({
   build: process.env.ARIADNE_BENCH
     ? { outDir: "dist-bench", rolldownOptions: { input: { index: "index.html", bench: "bench.html" } } }
     : {},
-  server: { port: 5177, strictPort: true, fs: { allow: [".."] } },
+  server: {
+    port: 5177,
+    strictPort: true,
+    // What the dev server may serve beyond this project: the linked Stoa
+    // packages and their dependencies, and the engine's build. Not the
+    // whole parent folder, which would hand the other repositories' files
+    // (ignored ones included) to anything that can reach the server.
+    fs: {
+      allow: [
+        searchForWorkspaceRoot(process.cwd()),
+        "../stoa-system/packages",
+        "../stoa-system/node_modules",
+        "../ariadne-runner/dist",
+      ],
+    },
+  },
   preview: { port: 4177, strictPort: true },
 });
