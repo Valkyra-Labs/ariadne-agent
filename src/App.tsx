@@ -331,6 +331,7 @@ export function App({ lang, onLang, themeChoice, onTheme }: AppProps) {
               stopRequested={session.isStopping()}
               ended={ended}
               canStop={canStop}
+              canPause={session.canPause()}
               onStop={stop}
               onPause={() => session.pause()}
               onResume={() => session.resume()}

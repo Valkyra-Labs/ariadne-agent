@@ -131,6 +131,18 @@ describe("a session", () => {
     expect(session.isStopping()).toBe(false);
   });
 
+  it("does not pause a run that is stopping", async () => {
+    const session = newSession(pageTransport(), "scale=0.05");
+    session.plan.send({ type: "SET_AUTONOMY", autonomy: "ask_none" });
+    session.start();
+    await until(() => session.plan.getSnapshot().matches("running"), "the run");
+    expect(session.stop()).toBe(true);
+    expect(session.canPause()).toBe(false);
+    expect(session.pause()).toBe(false);
+    await until(() => session.getSnapshot().status === "ended", "the end");
+    expect(session.plan.getSnapshot().value).toBe("stopped");
+  });
+
   it("pauses between events and resumes after the last one, losing nothing", async () => {
     const session = newSession(pageTransport(), "scale=0.02");
     session.plan.send({ type: "SET_AUTONOMY", autonomy: "ask_none" });

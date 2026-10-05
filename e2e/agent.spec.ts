@@ -140,6 +140,21 @@ test("while the run stops, the badge says Stopping", async ({ page }) => {
   await expect(bar).toContainText(en.run.status.ended);
 });
 
+test("Pause is off while the run stops: a paused stop would never end", async ({ page }) => {
+  await stopWhileRunning(page);
+  // Read at one instant, while the stop is still under way (a slow step).
+  const now = () =>
+    page.evaluate((label) => {
+      const layout = document.querySelector(".layout")!;
+      const pause = [...document.querySelectorAll<HTMLButtonElement>(".run-bar button")].find((b) => b.textContent?.startsWith(label));
+      return { plan: layout.getAttribute("data-plan-state"), stream: layout.getAttribute("data-stream"), pauseDisabled: pause?.disabled };
+    }, en.run.pause);
+  expect(await now()).toEqual({ plan: "running", stream: expect.stringMatching(/^(connecting|streaming)$/), pauseDisabled: true });
+  await page.keyboard.press("p");
+  expect(await now()).toEqual({ plan: "running", stream: expect.stringMatching(/^(connecting|streaming)$/), pauseDisabled: true });
+  await expectPlanState(page, "stopped");
+});
+
 test("Pause holds the run between events; Resume goes on from the next one", async ({ page }) => {
   await page.goto("/?scale=0.5");
   await ready(page);

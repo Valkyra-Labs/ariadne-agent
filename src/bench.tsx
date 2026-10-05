@@ -137,6 +137,7 @@ function Bench() {
           stopRequested={false}
           ended={false}
           canStop
+          canPause
           onStop={() => {}}
           onPause={() => {}}
           onResume={() => {}}

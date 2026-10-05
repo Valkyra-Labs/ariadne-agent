@@ -284,8 +284,11 @@ export class RunSession {
     return true;
   }
 
+  /** Pause holds the stream between two events. Not while the run stops:
+   * the stop needs the stream, and a paused stop would never end. */
   canPause(): boolean {
     const status = this.#snapshot.status;
+    if (this.isStopping()) return false;
     return status === "streaming" || status === "connecting" || status === "reconnecting";
   }
 

@@ -41,6 +41,8 @@ export type RunPanelProps = {
   stopRequested: boolean;
   ended: boolean;
   canStop: boolean;
+  /** Pause can be pressed (the session's own rule). */
+  canPause: boolean;
   onStop: () => void;
   onPause: () => void;
   onResume: () => void;
@@ -53,14 +55,13 @@ export type RunPanelProps = {
 };
 
 export function RunPanel(props: RunPanelProps) {
-  const { x, steps, autonomy, session, stopRequested, ended, canStop } = props;
+  const { x, steps, autonomy, session, stopRequested, ended, canStop, canPause } = props;
   const { t, f } = x;
   const processed = steps.filter((s) => {
     const status = stepStatusOf(s.snapshot.value);
     return status === "done" || status === "skipped" || status === "undone";
   }).length;
   const paused = session.status === "paused";
-  const canPause = session.status === "streaming" || session.status === "connecting" || session.status === "reconnecting";
   const retryRef = useRef<HTMLDivElement>(null);
   const errorStep = steps.find((s) => s.snapshot.matches("error"))?.id ?? null;
 
