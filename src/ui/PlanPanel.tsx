@@ -11,7 +11,7 @@ export type PlanPanelProps = {
   x: Text;
   steps: PlanStep[];
   autonomy: Autonomy;
-  /** Shown above Run while the run service starts or after it failed. */
+  /** Shown under Run while the run service starts or after it failed. */
   service: ReactNode;
   canRun: boolean;
   onRun: () => void;
@@ -82,7 +82,23 @@ export function PlanPanel({ x, steps, autonomy, service, canRun, onRun, onRestor
         />
       ) : (
         <>
-          <p className="muted">{t.plan.summary(f.int(steps.length), f.int(asks))}</p>
+          {/* Run first, so it is on the first screen; it stays in view while
+              the steps scroll under it, as the run's own controls do. */}
+          <div className="plan-bar">
+            <div className="actions">
+              <Button variant="primary" onPress={onRun} isDisabled={!canRun} aria-keyshortcuts="R">
+                {t.plan.run}{" "}
+                <span aria-hidden="true">
+                  <Kbd>R</Kbd>
+                </span>
+              </Button>
+              <Button variant="secondary" onPress={onRestore}>
+                {t.plan.restore}
+              </Button>
+            </div>
+            <p className="muted">{t.plan.summary(f.int(steps.length), f.int(asks))}</p>
+          </div>
+          {service}
           {conflicts.length > 0 && (
             <Callout tone="warning" role="none" title={t.plan.conflictTitle}>
               {conflicts.map((c) => {
@@ -98,18 +114,6 @@ export function PlanPanel({ x, steps, autonomy, service, canRun, onRun, onRestor
             onReorder={(next) => onReorder(next.map((s) => s.id))}
             onRemove={(step) => onRemove(step.id)}
           />
-          {service}
-          <div className="actions">
-            <Button variant="primary" onPress={onRun} isDisabled={!canRun} aria-keyshortcuts="R">
-              {t.plan.run}{" "}
-              <span aria-hidden="true">
-                <Kbd>R</Kbd>
-              </span>
-            </Button>
-            <Button variant="secondary" onPress={onRestore}>
-              {t.plan.restore}
-            </Button>
-          </div>
         </>
       )}
     </Panel>

@@ -57,8 +57,9 @@ p { margin: 0; }
 }
 .step-text { color: var(--stoa-color-text); }
 
-/* The run's controls stay in view while the steps scroll under them. */
-.run-bar {
+/* Run, and the run's controls, stay in view while the steps scroll under
+   them. */
+.run-bar, .plan-bar {
   position: sticky; inset-block-start: 0; z-index: 1;
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--stoa-space-2) var(--stoa-space-4);
   margin-inline: calc(-1 * var(--stoa-space-3)); padding: var(--stoa-space-2) var(--stoa-space-3);

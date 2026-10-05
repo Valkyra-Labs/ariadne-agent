@@ -196,6 +196,33 @@ for (const width of [1280, 375])
       expect(await sideways()).toEqual([0, 0]);
     });
 
+for (const [width, height] of [
+  [1280, 800],
+  [375, 812],
+] as const)
+  test(`Run and the run service's state are on the first screen at ${width}x${height}`, async ({ browser }) => {
+    for (const lang of LANGS) {
+      const t = strings[lang];
+      const context = await browser.newContext({ viewport: { width, height } });
+      const page = await context.newPage();
+      await page.goto(`/?lang=${lang}`);
+      await ready(page, t.plan.run);
+      const run = page.getByRole("button", { name: t.plan.run });
+      const box = (await run.boundingBox())!;
+      expect(box.y + box.height, `${lang}: Run's bottom edge`).toBeLessThanOrEqual(height);
+      await context.close();
+      // A run service that failed says so where Run is.
+      const blocked = await browser.newContext({ viewport: { width, height }, serviceWorkers: "block" });
+      const second = await blocked.newPage();
+      await second.goto(`/?lang=${lang}`);
+      const failed = second.getByText(t.service.failedTitle);
+      await expect(failed).toBeVisible();
+      const top = (await failed.boundingBox())!;
+      expect(top.y + top.height, `${lang}: the failure's title`).toBeLessThanOrEqual(height);
+      await blocked.close();
+    }
+  });
+
 for (const theme of THEMES)
   test(`the header stays put and the scrollbars are Stoa's, ${theme}`, async ({ page }) => {
     await page.goto(`/?theme=${theme}&scale=0.05`);
