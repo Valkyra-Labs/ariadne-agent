@@ -101,6 +101,21 @@ test("the theme follows the system until one is chosen, and the choice is kept",
   await expect(html).not.toHaveAttribute("data-theme");
 });
 
+test("the browser's own controls take the theme (color-scheme)", async ({ page }) => {
+  const scheme = () => page.evaluate(() => getComputedStyle(document.documentElement).colorScheme);
+  for (const system of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: system });
+    await page.goto("/?theme=system");
+    await ready(page);
+    expect(await scheme()).toBe(system);
+    for (const theme of THEMES) {
+      await page.goto(`/?theme=${theme}`);
+      await ready(page);
+      expect(await scheme(), `${theme} on a ${system} system`).toBe(theme);
+    }
+  }
+});
+
 test("the language switches the whole interface and is kept", async ({ page }) => {
   await page.goto("/");
   await ready(page);
