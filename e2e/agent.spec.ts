@@ -2,6 +2,7 @@
 // plan, running it, the confirmations, Stop, Pause, the undo window, the
 // agent's request to change a step, the shortcuts and the log.
 import { expect, test, type Page } from "@playwright/test";
+import { strings } from "../src/i18n";
 import { dialog, en, expectNoSeriousViolations, expectPlanState, logLines, ready, runSteps, confirmation } from "./helpers";
 
 test("the plan is edited with the keyboard: moved, marked, removed, emptied and restored", async ({ page }) => {
@@ -299,6 +300,26 @@ test("the log is copied as text", async ({ page, context }) => {
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   expect(copied).toContain("Plan approved: 12 steps, Ask for marked steps, 6 will ask first.");
   expect(copied).toContain("Run stopped after step 2.");
+});
+
+test("an Arabic log keeps each line's time and level at the left, without invisible bidi marks", async ({ page }) => {
+  const t = strings.ar;
+  await page.goto("/?lang=ar&scale=0.05");
+  await ready(page, t.plan.run);
+  await page.getByRole("button", { name: t.plan.run }).click();
+  await dialog(page);
+  await page.keyboard.press("s");
+  await expectPlanState(page, "stopped");
+  const lines = page.locator(".log .stoa-code__line");
+  expect(await lines.count()).toBeGreaterThan(3);
+  expect(await page.locator(".log .stoa-code__scroll").evaluate((el) => /[\u2066-\u2069]/.test(el.textContent ?? ""))).toBe(false);
+  for (const line of await lines.all()) {
+    const [time, level, message] = await Promise.all(
+      [".stoa-code__time", ".stoa-code__level", ".stoa-code__message"].map((part) => line.locator(part).evaluate((el) => el.getBoundingClientRect().left)),
+    );
+    expect(time).toBeLessThan(level!);
+    expect(level).toBeLessThan(message!);
+  }
 });
 
 test("under reduced motion the undo countdown still counts, without animating", async ({ page }) => {

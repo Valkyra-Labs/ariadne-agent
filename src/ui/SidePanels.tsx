@@ -16,11 +16,9 @@ export function LogPanel({ x, log, steps }: { x: Text; log: LogEntry[]; steps: S
     };
     return log.map((entry) => {
       const { level, text } = logLine(x, entry, position, title);
-      // Stoa's LogView isolates the message but not the time and the level:
-      // an Arabic level or Arabic-Indic digits would join the message's
-      // right-to-left run and swap places. Unicode isolates keep each in
-      // its place (LRI for the time, FSI for the level).
-      return { time: `\u2066${f.time(entry.at)}\u2069`, level: `\u2068${level}\u2069`, text };
+      // LogView isolates each part: the time stays left to right, the level
+      // and the message each take the direction of their own script.
+      return { time: f.time(entry.at), level, text };
     });
   }, [x, f, log, steps]);
   return (
