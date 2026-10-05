@@ -1,7 +1,7 @@
 // The plan before it runs: the steps in their order, which can be moved,
 // removed and marked to ask first; conflicts between steps; Run.
 import type { ReactNode } from "react";
-import { Button, Callout, EmptyState, Kbd, Panel, StepList, Switch, Tag, type Step, type TagTone } from "@valkyra-labs/stoa-react";
+import { Button, Callout, EmptyState, Panel, StepList, Switch, Tag, type Step, type TagTone } from "@valkyra-labs/stoa-react";
 import { findConflicts, requiresConfirmation, type Autonomy, type PlanStep, type Risk } from "ariadne-runner";
 import { stepTitle, type Text } from "../text";
 
@@ -86,11 +86,8 @@ export function PlanPanel({ x, steps, autonomy, service, canRun, onRun, onRestor
               the steps scroll under it, as the run's own controls do. */}
           <div className="plan-bar">
             <div className="actions">
-              <Button variant="primary" onPress={onRun} isDisabled={!canRun} aria-keyshortcuts="R">
-                {t.plan.run}{" "}
-                <span aria-hidden="true">
-                  <Kbd>R</Kbd>
-                </span>
+              <Button variant="primary" onPress={onRun} isDisabled={!canRun} shortcut={{ key: "r" }}>
+                {t.plan.run}
               </Button>
               <Button variant="secondary" onPress={onRestore}>
                 {t.plan.restore}

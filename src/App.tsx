@@ -5,7 +5,6 @@ import {
   Button,
   Callout,
   I18nProvider,
-  Kbd,
   LanguageSwitch,
   LiveRegion,
   PageShell,
@@ -276,11 +275,8 @@ export function App({ lang, onLang, themeChoice, onTheme }: AppProps) {
           subtitle={t.subtitle}
           actions={
             <>
-              <Button variant="ghost" onPress={() => setHelpOpen(true)} aria-keyshortcuts="?">
-                {t.shortcutsButton}{" "}
-                <span aria-hidden="true">
-                  <Kbd>?</Kbd>
-                </span>
+              <Button variant="ghost" onPress={() => setHelpOpen(true)} shortcut={{ key: "?" }}>
+                {t.shortcutsButton}
               </Button>
               <ThemeSwitch value={themeChoice} onChange={onTheme} />
               <LanguageSwitch languages={LANGS} value={lang} onChange={onLang} />

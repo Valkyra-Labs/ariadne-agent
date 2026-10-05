@@ -269,6 +269,22 @@ test("the shortcuts dialog lists every shortcut with its keys", async ({ page })
   await expect(help).toBeVisible();
 });
 
+test("a button with a key names it for assistive technology and draws it after its label", async ({ page }) => {
+  await page.goto("/?scale=4");
+  await ready(page);
+  const keyed = async (name: string, key: string) => {
+    const button = page.getByRole("button", { name, exact: true });
+    await expect(button).toHaveAttribute("aria-keyshortcuts", key);
+    // Stoa's hint: hidden from assistive technology, so the name stays the label.
+    await expect(button.locator(".stoa-button__shortcut[aria-hidden='true'] kbd.stoa-kbd")).toHaveText(key);
+  };
+  await keyed(en.shortcutsButton, "?");
+  await keyed(en.plan.run, "R");
+  await page.getByRole("button", { name: en.plan.run }).click();
+  await keyed(en.run.stop, "S");
+  await keyed(en.run.pause, "P");
+});
+
 test("the log is copied as text", async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/?scale=0.05");

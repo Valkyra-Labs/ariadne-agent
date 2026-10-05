@@ -1,7 +1,7 @@
 // The run as it happens: the controls (Stop always first), what the stream
 // is doing, and every step with its live status, its result and its undo.
 import { useEffect, useRef, type ReactNode } from "react";
-import { Button, ButtonGroup, Callout, Kbd, Panel, ProgressBar, StatusBadge, StepList, Toolbar, type Step, type StatusTone } from "@valkyra-labs/stoa-react";
+import { Button, ButtonGroup, Callout, Panel, ProgressBar, StatusBadge, StepList, Toolbar, type Step, type StatusTone } from "@valkyra-labs/stoa-react";
 import { requiresConfirmation, stepStatusOf, type Autonomy } from "ariadne-runner";
 import type { SessionSnapshot, StreamStatus } from "../session";
 import { errorText, stepTitle, summaryText, undoText, type Text } from "../text";
@@ -157,18 +157,12 @@ export function RunPanel(props: RunPanelProps) {
     <Panel title={t.run.panel} className="run">
       <div className="run-bar">
         <Toolbar label={t.run.controls}>
-          <Button variant="danger" onPress={props.onStop} isDisabled={!canStop} aria-keyshortcuts="S">
-            {t.run.stop}{" "}
-            <span aria-hidden="true">
-              <Kbd>S</Kbd>
-            </span>
+          <Button variant="danger" onPress={props.onStop} isDisabled={!canStop} shortcut={{ key: "s" }}>
+            {t.run.stop}
           </Button>
           <ButtonGroup>
-            <Button onPress={paused ? props.onResume : props.onPause} isDisabled={!paused && !canPause} aria-keyshortcuts="P">
-              {paused ? t.run.resume : t.run.pause}{" "}
-              <span aria-hidden="true">
-                <Kbd>P</Kbd>
-              </span>
+            <Button onPress={paused ? props.onResume : props.onPause} isDisabled={!paused && !canPause} shortcut={{ key: "p" }}>
+              {paused ? t.run.resume : t.run.pause}
             </Button>
           </ButtonGroup>
           {ended && (
