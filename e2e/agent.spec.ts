@@ -208,6 +208,23 @@ test("the undo window: a toast with Undo, a countdown, then final", async ({ pag
   await expect(runSteps(page).nth(0)).toContainText(en.step.undoPermanent);
 });
 
+test("a confirmation says what Escape does there, and Escape does it", async ({ page }) => {
+  await page.goto("/?scale=0.05");
+  await ready(page);
+  await page.getByRole("button", { name: en.plan.run }).click();
+  let alert = await dialog(page);
+  await expect(alert.locator("p", { has: page.locator("kbd", { hasText: /^Esc$/ }) })).toHaveText("Esc skips this step, like the Skip step button.");
+  await page.keyboard.press("Escape");
+  await expect(runSteps(page).nth(2)).toContainText("Skipped");
+  await page.getByRole("button", { name: en.step.retry, exact: true }).click();
+  await (await dialog(page)).getByRole("button", { name: en.confirm.skip }).click();
+  alert = await dialog(page);
+  await expect(alert.getByRole("heading")).toHaveText("Step 7: the agent asks to change the plan");
+  await expect(alert.locator("p", { has: page.locator("kbd", { hasText: /^Esc$/ }) })).toHaveText("Esc keeps the plan as it is, like the Keep the plan button.");
+  await page.keyboard.press("Escape");
+  await expect.poll(async () => (await logLines(page)).some((l) => l.includes("You kept step 7 as planned."))).toBe(true);
+});
+
 test("the agent asks to change a step: Allow replaces it", async ({ page }) => {
   await page.goto("/?scale=0.05");
   await ready(page);

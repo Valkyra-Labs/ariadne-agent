@@ -1,8 +1,8 @@
 // The confirmations the run stops for: a risky step's draft (confirm or
 // skip) and the agent's request to leave the plan (allow or keep it). Each
 // is an AlertDialog with the focus on the safe action, so an Enter pressed
-// by habit skips the step or keeps the plan; Escape does the same. Stop
-// stays one key away while the dialog is open.
+// by habit skips the step or keeps the plan; Escape does the same, and the
+// dialog says so. Stop stays one key away while the dialog is open.
 import { useRef } from "react";
 import { AlertDialog, Kbd } from "@valkyra-labs/stoa-react";
 import type { WaitingNotice } from "ariadne-runner";
@@ -17,11 +17,16 @@ export type DecisionsProps = {
   onDecide: (stepId: string, command: "confirm" | "skip" | "allow" | "deny") => void;
 };
 
-function StopHint({ x }: { x: Text }) {
+function KeyHints({ x, escape }: { x: Text; escape: string }) {
   return (
-    <p className="muted">
-      {x.t.confirm.stopHint} <Kbd>S</Kbd>
-    </p>
+    <>
+      <p className="muted">
+        <Kbd>Esc</Kbd> {escape}
+      </p>
+      <p className="muted">
+        {x.t.confirm.stopHint} <Kbd>S</Kbd>
+      </p>
+    </>
   );
 }
 
@@ -67,7 +72,7 @@ export function Decisions({ x, steps, waiting, open, onDecide }: DecisionsProps)
         <p>{t.deviationReason[deviation.reason](f.id(deviation.archiveRequest), f.date(deviation.archiveUploaded))}</p>
         <p>{t.deviationProposal[deviation.proposal]}</p>
         <p>{t.deviation.instead(proposed, t.risk[deviation.newRisk])}</p>
-        <StopHint x={x} />
+        <KeyHints x={x} escape={t.deviation.escapeKeeps} />
       </AlertDialog>
     );
   }
@@ -102,7 +107,7 @@ export function Decisions({ x, steps, waiting, open, onDecide }: DecisionsProps)
           })}
         </ul>
         <p>{t.confirm.intro}</p>
-        <StopHint x={x} />
+        <KeyHints x={x} escape={t.confirm.escapeSkips} />
       </AlertDialog>
     );
   }
