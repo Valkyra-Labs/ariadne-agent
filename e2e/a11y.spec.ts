@@ -41,7 +41,12 @@ for (const lang of LANGS)
       await expect(page.locator(".summary")).toBeVisible();
       await expectNoSeriousViolations(page, "stopped, with summary and toasts", { lang, theme });
 
+      // The letter's undo window is still open: New plan asks first.
       await page.getByRole("button", { name: t.run.newPlan }).click();
+      await expect(confirmation(page)).toBeVisible();
+      await expectNoSeriousViolations(page, "new plan with an open undo window", { lang, theme });
+      await confirmation(page).getByRole("button", { name: t.newPlanAsk.confirm }).click();
+      await expectPlanState(page, "draft");
       for (let i = 0; i < 12; i += 1) await page.locator(".stoa-reorder__remove").first().click();
       await expect(page.getByText(t.plan.emptyTitle)).toBeVisible();
       await expectNoSeriousViolations(page, "empty plan", { lang, theme });

@@ -142,6 +142,8 @@ export type Strings = {
     /** Follows the Escape key: what it does in the agent's request. */
     escapeKeeps: string;
   };
+  /** New plan while finished steps can still be undone within a window. */
+  newPlanAsk: { title: string; open: (steps: Count) => string; ends: string; keep: string; confirm: string };
   toast: { undoable: (summary: string, time: string) => string; undone: (text: string) => string; reconnected: string };
   log: {
     panel: string;
@@ -375,6 +377,13 @@ const en: Strings = {
     allow: "Allow the change",
     deny: "Keep the plan",
     escapeKeeps: "keeps the plan as it is, like the Keep the plan button.",
+  },
+  newPlanAsk: {
+    title: "Start a new plan?",
+    open: (steps) => `Undo is still possible for ${steps.text} ${steps.n === 1 ? "step" : "steps"} of this run.`,
+    ends: "A new plan ends those undo windows; what was done stays done.",
+    keep: "Keep this run",
+    confirm: "Start a new plan",
   },
   toast: {
     undoable: (summary, time) => `${summary} Undo is possible until ${time}.`,
@@ -678,6 +687,13 @@ const ruStrings: Strings = {
     deny: "Оставить план",
     escapeKeeps: "оставляет план как есть, как кнопка «Оставить план».",
   },
+  newPlanAsk: {
+    title: "Начать новый план?",
+    open: (steps) => `Отменить ещё можно ${steps.text} ${ru(steps.n, "шаг", "шага", "шагов")} этого запуска.`,
+    ends: "Новый план закроет эти окна отмены; сделанное останется сделанным.",
+    keep: "Оставить этот запуск",
+    confirm: "Начать новый план",
+  },
   toast: {
     undoable: (summary, time) => `${summary} Отменить можно до ${time}.`,
     undone: (text) => `Отменено. ${text}`,
@@ -979,6 +995,14 @@ const arStrings: Strings = {
     allow: "اسمح بالتغيير",
     deny: "أبقِ الخطة",
     escapeKeeps: "يُبقي الخطة كما هي، كما يفعل زر «أبقِ الخطة».",
+  },
+  newPlanAsk: {
+    title: "أتبدأ خطة جديدة؟",
+    open: (steps) =>
+      `لا يزال التراجع ممكنًا عن ${ar(steps.n, { one: "خطوة واحدة", two: "خطوتين", few: `${steps.text} خطوات`, many: `${steps.text} خطوة`, other: `${steps.text} خطوة` })} من هذا التشغيل.`,
+    ends: "الخطة الجديدة تُنهي نوافذ التراجع هذه، وما تمّ يبقى كما هو.",
+    keep: "أبقِ هذا التشغيل",
+    confirm: "ابدأ خطة جديدة",
   },
   toast: {
     undoable: (summary, time) => `${summary} يمكن التراجع حتى ${time}.`,

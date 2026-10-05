@@ -293,10 +293,52 @@ test("a whole run to the end gives a summary", async ({ page }) => {
   await expect(summary.getByRole("term")).toHaveText([en.summary.done, en.summary.skipped, en.summary.undone, en.summary.asked, en.summary.errors, en.summary.duration, en.summary.events]);
   await expect(summary.getByRole("definition").first()).toHaveText("12");
   await expect(page.locator('[role="status"][aria-live="polite"][aria-atomic="true"]').last()).toHaveText("Run finished: 12 of 12 steps done.");
-  // New plan: back to the editor, with a fresh plan.
+  // New plan: the letters' undo windows are still open, so it asks first;
+  // then back to the editor, with a fresh plan.
   await page.getByRole("button", { name: en.run.newPlan }).click();
+  await (await dialog(page)).getByRole("button", { name: en.newPlanAsk.confirm }).click();
   await expectPlanState(page, "draft");
   await expect(page.getByRole("grid", { name: en.plan.list }).getByRole("row")).toHaveCount(12);
+});
+
+/** Run, send the letter at step 3, and stop at step 4's failure. */
+async function sendLetterAndStop(page: Page) {
+  await page.getByRole("button", { name: en.plan.run }).click();
+  await (await dialog(page)).getByRole("button", { name: en.confirm.confirm.email }).click();
+  await expect(page.getByRole("button", { name: en.step.retry, exact: true })).toBeVisible();
+  await page.keyboard.press("s");
+  await expectPlanState(page, "stopped");
+}
+
+test("New plan asks before it ends undo windows that are still open", async ({ page }) => {
+  await page.goto("/?scale=0.05");
+  await ready(page);
+  await sendLetterAndStop(page);
+  await page.getByRole("button", { name: en.run.newPlan }).click();
+  let ask = await dialog(page);
+  await expect(ask.getByRole("heading")).toHaveText("Start a new plan?");
+  await expect(ask).toContainText("Undo is still possible for 1 step of this run.");
+  await expect(ask.getByRole("button", { name: "Keep this run" })).toBeFocused();
+  await expectNoSeriousViolations(page, "new plan with open undo windows");
+  // Escape keeps the run, and the letter can still be recalled.
+  await page.keyboard.press("Escape");
+  await expect(ask).toBeHidden();
+  await expectPlanState(page, "stopped");
+  await expect(runSteps(page).nth(2).getByRole("button", { name: /^Undo: / })).toBeVisible();
+  await page.getByRole("button", { name: en.run.newPlan }).click();
+  ask = await dialog(page);
+  await ask.getByRole("button", { name: "Start a new plan" }).click();
+  await expectPlanState(page, "draft");
+});
+
+test("New plan goes straight to a new plan when no undo window is open", async ({ page }) => {
+  await page.goto("/?scale=0.05&undoWindow=1");
+  await ready(page);
+  await sendLetterAndStop(page);
+  await expect(runSteps(page).nth(2)).toContainText("Final since");
+  await page.getByRole("button", { name: en.run.newPlan }).click();
+  await expectPlanState(page, "draft");
+  await expect(confirmation(page)).toHaveCount(0);
 });
 
 test("the shortcuts dialog lists every shortcut with its keys", async ({ page }) => {
