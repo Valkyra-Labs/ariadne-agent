@@ -225,6 +225,38 @@ test("a confirmation says what Escape does there, and Escape does it", async ({ 
   await expect.poll(async () => (await logLines(page)).some((l) => l.includes("You kept step 7 as planned."))).toBe(true);
 });
 
+test("one undo toast at a time: the newest window's; the older ones stay in the step list", async ({ page }) => {
+  await page.goto("/?scale=0.02");
+  await ready(page);
+  await page.getByRole("radio", { name: en.autonomy.ask_none }).click();
+  await page.getByRole("button", { name: en.plan.run }).click();
+  const undoToasts = page.locator(".stoa-toast").filter({ hasText: "Undo is possible until" });
+  let most = 0;
+  for (;;) {
+    most = Math.max(most, await undoToasts.count());
+    if ((await page.locator(".layout").getAttribute("data-plan-state")) === "finished") break;
+    const alert = confirmation(page);
+    const retry = page.getByRole("button", { name: en.step.retry, exact: true });
+    if (await alert.isVisible()) await alert.getByRole("button").last().click();
+    else if (await retry.isVisible()) await retry.click();
+    await page.waitForTimeout(20);
+  }
+  expect(most).toBe(1);
+  await expect(undoToasts).toHaveCount(1);
+  // The toast is the newest window's; every open window keeps its Undo in the list.
+  const rows = await runSteps(page).all();
+  const open: number[] = [];
+  for (const [i, row] of rows.entries()) {
+    if ((await row.getByRole("progressbar", { name: /^Undo window of step / }).count()) === 0) continue;
+    await expect(row.getByRole("button", { name: /^Undo: / })).toBeVisible();
+    open.push(i);
+  }
+  expect(open.length).toBeGreaterThan(1);
+  const last = runSteps(page).nth(open.at(-1)!);
+  const summary = (await last.locator(".step-text").innerText()).trim();
+  await expect(undoToasts).toContainText(summary);
+});
+
 test("the agent asks to change a step: Allow replaces it", async ({ page }) => {
   await page.goto("/?scale=0.05");
   await ready(page);

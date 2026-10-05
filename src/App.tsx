@@ -153,6 +153,9 @@ export function App({ lang, onLang, themeChoice, onTheme }: AppProps) {
         }
         const result = session.plan.getSnapshot().context.stepRefs[notice.stepId]?.getSnapshot().context.result;
         if (!result) return;
+        // One undo toast at a time, the newest window's: the older windows
+        // keep their Undo and countdown in the step list.
+        for (const stepId of [...undoToasts.current.keys()]) closeUndoToast(stepId);
         const left = notice.deadline - Date.now();
         const key = toasts.add({
           tone: "info",
