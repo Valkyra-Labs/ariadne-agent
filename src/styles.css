@@ -8,18 +8,19 @@
 @import "@fontsource/ibm-plex-sans-arabic/600.css";
 @import "@fontsource/ibm-plex-mono/400.css";
 @import "@fontsource/ibm-plex-mono/500.css";
+/* Tabular Arabic-Indic digits in the numeric face (log times, the
+   summary's values): Stoa's numeric stack names Noto Sans Arabic before
+   IBM Plex Sans Arabic, whose digits are proportional. Only an Arabic
+   page downloads it. */
+@import "@fontsource/noto-sans-arabic/400.css";
 @import "@valkyra-labs/stoa-react/styles.css";
 
 :root {
-  color-scheme: light dark;
   font-family: var(--stoa-font-family-sans);
   font-size: var(--stoa-font-size-md);
   background: var(--stoa-color-bg);
   color: var(--stoa-color-text);
 }
-/* A chosen theme also sets the scheme of the browser's own controls. */
-:root[data-theme="light"] { color-scheme: light; }
-:root[data-theme="dark"] { color-scheme: dark; }
 html, body, #root { block-size: 100%; }
 body { margin: 0; background: var(--stoa-color-bg); }
 p { margin: 0; }
@@ -39,6 +40,10 @@ p { margin: 0; }
 
 .stoa-panel { display: grid; gap: var(--stoa-space-3); align-content: start; }
 .stoa-panel__title { margin: 0; }
+/* The run's heading holds the focus after a decision (RunPanel); drawn as
+   Stoa draws focus. */
+.run > .stoa-panel__title:focus { outline: none; }
+.run > .stoa-panel__title:focus-visible { outline: var(--stoa-focus-width) solid var(--stoa-color-focus); outline-offset: 2px; }
 
 .task__fields { display: flex; flex-wrap: wrap; gap: var(--stoa-space-4); align-items: end; }
 .task__autonomy { display: grid; gap: var(--stoa-space-2); }
@@ -52,8 +57,9 @@ p { margin: 0; }
 }
 .step-text { color: var(--stoa-color-text); }
 
-/* The run's controls stay in view while the steps scroll under them. */
-.run-bar {
+/* Run, and the run's controls, stay in view while the steps scroll under
+   them. */
+.run-bar, .plan-bar {
   position: sticky; inset-block-start: 0; z-index: 1;
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--stoa-space-2) var(--stoa-space-4);
   margin-inline: calc(-1 * var(--stoa-space-3)); padding: var(--stoa-space-2) var(--stoa-space-3);

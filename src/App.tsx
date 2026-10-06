@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useSelector } from "@xstate/react";
 import {
+  AlertDialog,
   AppHeader,
   Button,
   Callout,
   I18nProvider,
-  Kbd,
   LanguageSwitch,
   LiveRegion,
   PageShell,
@@ -15,6 +16,7 @@ import {
   ToastQueue,
   ToastRegion,
   groupShortcuts,
+  keepFocusInPlace,
   useLanguagePreference,
   useShortcuts,
   useThemePreference,
@@ -80,6 +82,7 @@ export function App({ lang, onLang, themeChoice, onTheme }: AppProps) {
   const [service, setService] = useState<ServiceState>({ status: "starting" });
   const [attempt, setAttempt] = useState(0);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [askNewPlan, setAskNewPlan] = useState(false);
   const [announcement, setAnnouncement] = useState("");
 
   const stream = useSession(session);
@@ -154,6 +157,9 @@ export function App({ lang, onLang, themeChoice, onTheme }: AppProps) {
         }
         const result = session.plan.getSnapshot().context.stepRefs[notice.stepId]?.getSnapshot().context.result;
         if (!result) return;
+        // One undo toast at a time, the newest window's: the older windows
+        // keep their Undo and countdown in the step list.
+        for (const stepId of [...undoToasts.current.keys()]) closeUndoToast(stepId);
         const left = notice.deadline - Date.now();
         const key = toasts.add({
           tone: "info",
@@ -216,9 +222,18 @@ export function App({ lang, onLang, themeChoice, onTheme }: AppProps) {
     if (stream.status === "paused") session.resume();
     else session.pause();
   };
-  const newPlan = () => {
+  // Finished steps whose undo window is still open: a new plan would end
+  // them, so New plan asks first. (A step with no window can always be
+  // undone where it was done; it has nothing to lose here.)
+  const openWindows = steps.filter((s) => s.snapshot.matches({ done: "undoable" })).length;
+  const startNewPlan = () => {
+    setAskNewPlan(false);
     for (const stepId of [...undoToasts.current.keys()]) closeUndoToast(stepId);
     session.reset();
+  };
+  const newPlan = () => {
+    if (openWindows > 0) setAskNewPlan(true);
+    else startNewPlan();
   };
 
   const help = useShortcuts([
@@ -240,7 +255,8 @@ export function App({ lang, onLang, themeChoice, onTheme }: AppProps) {
           <div className="actions">
             <Button
               variant="primary"
-              onPress={() => {
+              onPress={(e) => {
+                keepFocusInPlace(e.target);
                 setAttempt((a) => a + 1);
                 setService({ status: "starting" });
               }}
@@ -248,9 +264,14 @@ export function App({ lang, onLang, themeChoice, onTheme }: AppProps) {
               {t.service.retry}
             </Button>
             <Button
-              onPress={() => {
-                session.setTransport(pageTransport());
-                setService({ status: "page" });
+              onPress={(e) => {
+                // Run can be pressed now, and it is the next thing to do.
+                const plan = e.target.closest(".plan");
+                flushSync(() => {
+                  session.setTransport(pageTransport());
+                  setService({ status: "page" });
+                });
+                plan?.querySelector<HTMLButtonElement>(".plan-bar button")?.focus();
               }}
             >
               {t.service.usePage}
@@ -276,11 +297,8 @@ export function App({ lang, onLang, themeChoice, onTheme }: AppProps) {
           subtitle={t.subtitle}
           actions={
             <>
-              <Button variant="ghost" onPress={() => setHelpOpen(true)} aria-keyshortcuts="?">
-                {t.shortcutsButton}{" "}
-                <span aria-hidden="true">
-                  <Kbd>?</Kbd>
-                </span>
+              <Button variant="ghost" onPress={() => setHelpOpen(true)} shortcut={{ key: "?" }}>
+                {t.shortcutsButton}
               </Button>
               <ThemeSwitch value={themeChoice} onChange={onTheme} />
               <LanguageSwitch languages={LANGS} value={lang} onChange={onLang} />
@@ -328,9 +346,10 @@ export function App({ lang, onLang, themeChoice, onTheme }: AppProps) {
               steps={steps}
               autonomy={ctx.autonomy}
               session={stream}
-              stopRequested={ctx.stopRequested}
+              stopRequested={session.isStopping()}
               ended={ended}
               canStop={canStop}
+              canPause={session.canPause()}
               onStop={stop}
               onPause={() => session.pause()}
               onResume={() => session.resume()}
@@ -360,6 +379,18 @@ export function App({ lang, onLang, themeChoice, onTheme }: AppProps) {
         </div>
       </div>
       <Decisions x={x} steps={steps} waiting={stream.waiting} open={decisionOpen} onDecide={(stepId, command) => session.decide(stepId, command)} />
+      <AlertDialog
+        isOpen={askNewPlan && ended}
+        onOpenChange={setAskNewPlan}
+        title={t.newPlanAsk.title}
+        confirmLabel={t.newPlanAsk.confirm}
+        cancelLabel={t.newPlanAsk.keep}
+        tone="destructive"
+        onConfirm={startNewPlan}
+      >
+        <p>{t.newPlanAsk.open({ n: openWindows, text: f.int(openWindows) })}</p>
+        <p>{t.newPlanAsk.ends}</p>
+      </AlertDialog>
       <ShortcutsDialog isOpen={helpOpen} onOpenChange={setHelpOpen} title={t.shortcuts.title} groups={groupShortcuts(help, t.shortcuts.other)} />
       <ToastRegion queue={toasts} />
       <LiveRegion>{announcement}</LiveRegion>

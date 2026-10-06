@@ -36,7 +36,7 @@ export const runSteps = (page: Page) => page.getByRole("list", { name: en.run.li
 export async function logLines(page: Page): Promise<string[]> {
   const pre = page.locator(".log .stoa-code__scroll");
   if ((await pre.count()) === 0) return [];
-  return (await pre.locator(".stoa-code__line").allInnerTexts()).map((l) => l.replace(/[\u2066-\u2069]/g, "").trim());
+  return (await pre.locator(".stoa-code__line").allInnerTexts()).map((l) => l.trim());
 }
 
 /** A confirmation the run waits for: Stoa's AlertDialog, a modal. (A

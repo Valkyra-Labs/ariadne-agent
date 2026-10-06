@@ -75,7 +75,9 @@ describe("a session", () => {
     const ref = plan.context.stepRefs[waiting]!;
     expect(ref.getSnapshot().context.skipReason).toBe("stopped_by_user");
     const statuses = plan.context.order.map((id) => stepStatusOf(plan.context.stepRefs[id]!.getSnapshot().value));
-    expect(statuses.slice(3)).toEqual(Array(9).fill("waiting"));
+    // The steps the run never reached are skipped by the stop, not waiting.
+    expect(statuses.slice(3)).toEqual(Array(9).fill("skipped"));
+    for (const id of plan.context.order.slice(3)) expect(plan.context.stepRefs[id]!.getSnapshot().context.skipReason).toBe("stopped_by_user");
     expect(plan.context.log.some((e) => e.kind === "stop_requested")).toBe(true);
   });
 
@@ -113,7 +115,32 @@ describe("a session", () => {
     expect(plan.value).toBe("stopped");
     expect(plan.context.stoppedAfter).toBe("s1");
     expect(plan.context.stepRefs.s1!.getSnapshot().matches("done")).toBe(true);
-    expect(plan.context.stepRefs.s2!.getSnapshot().value).toBe("waiting");
+    expect(plan.context.stepRefs.s2!.getSnapshot().value).toBe("skipped");
+  });
+
+  it("is stopping from the press of Stop until the run ends, even before the run has started", async () => {
+    const session = newSession(pageTransport(), "scale=0.02");
+    session.start();
+    expect(session.isStopping()).toBe(false);
+    // Before plan.started: the stop waits for the run to start.
+    expect(session.plan.getSnapshot().value).toBe("approved");
+    expect(session.stop()).toBe(true);
+    expect(session.isStopping()).toBe(true);
+    await until(() => session.getSnapshot().status === "ended", "the end");
+    expect(session.plan.getSnapshot().value).toBe("stopped");
+    expect(session.isStopping()).toBe(false);
+  });
+
+  it("does not pause a run that is stopping", async () => {
+    const session = newSession(pageTransport(), "scale=0.05");
+    session.plan.send({ type: "SET_AUTONOMY", autonomy: "ask_none" });
+    session.start();
+    await until(() => session.plan.getSnapshot().matches("running"), "the run");
+    expect(session.stop()).toBe(true);
+    expect(session.canPause()).toBe(false);
+    expect(session.pause()).toBe(false);
+    await until(() => session.getSnapshot().status === "ended", "the end");
+    expect(session.plan.getSnapshot().value).toBe("stopped");
   });
 
   it("pauses between events and resumes after the last one, losing nothing", async () => {

@@ -1,7 +1,7 @@
 // The run as it happens: the controls (Stop always first), what the stream
 // is doing, and every step with its live status, its result and its undo.
 import { useEffect, useRef, type ReactNode } from "react";
-import { Button, ButtonGroup, Callout, Kbd, Panel, ProgressBar, StatusBadge, StepList, Toolbar, type Step, type StatusTone } from "@valkyra-labs/stoa-react";
+import { Button, ButtonGroup, Callout, Panel, ProgressBar, StatusBadge, StepList, Toolbar, keepFocusInPlace, type Step, type StatusTone } from "@valkyra-labs/stoa-react";
 import { requiresConfirmation, stepStatusOf, type Autonomy } from "ariadne-runner";
 import type { SessionSnapshot, StreamStatus } from "../session";
 import { errorText, stepTitle, summaryText, undoText, type Text } from "../text";
@@ -37,9 +37,12 @@ export type RunPanelProps = {
   steps: StepView[];
   autonomy: Autonomy;
   session: SessionSnapshot;
+  /** Stop was asked for (the run may not have started yet). */
   stopRequested: boolean;
   ended: boolean;
   canStop: boolean;
+  /** Pause can be pressed (the session's own rule). */
+  canPause: boolean;
   onStop: () => void;
   onPause: () => void;
   onResume: () => void;
@@ -52,16 +55,41 @@ export type RunPanelProps = {
 };
 
 export function RunPanel(props: RunPanelProps) {
-  const { x, steps, autonomy, session, stopRequested, ended, canStop } = props;
+  const { x, steps, autonomy, session, stopRequested, ended, canStop, canPause } = props;
   const { t, f } = x;
   const processed = steps.filter((s) => {
     const status = stepStatusOf(s.snapshot.value);
     return status === "done" || status === "skipped" || status === "undone";
   }).length;
   const paused = session.status === "paused";
-  const canPause = session.status === "streaming" || session.status === "connecting" || session.status === "reconnecting";
   const retryRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
   const errorStep = steps.find((s) => s.snapshot.matches("error"))?.id ?? null;
+
+  // Where the focus goes when a decision removes or disables the control
+  // that had it (Run, Retry, Skip, Stop): the run's heading, one Tab before
+  // Stop. A confirmation opened from there returns the focus there too.
+  // Not scrolled to: the steps the person is reading stay in view.
+  const focusRun = () => {
+    const section = barRef.current?.closest("section");
+    const heading = section ? document.getElementById(section.getAttribute("aria-labelledby") ?? "") : null;
+    if (!heading) return;
+    heading.tabIndex = -1;
+    heading.focus({ preventScroll: true });
+  };
+  const decide = (id: string, command: "retry" | "skip") => {
+    focusRun();
+    props.onDecide(id, command);
+  };
+  const stop = () => {
+    focusRun();
+    props.onStop();
+  };
+
+  // Run removed the plan, and its button with it: the focus starts at the run.
+  useEffect(() => {
+    if (!document.activeElement || document.activeElement === document.body) focusRun();
+  }, []);
 
   // A failed step waits for a decision: its Retry button takes focus, as a
   // confirmation's dialog does, so the keyboard is where the run is.
@@ -106,11 +134,11 @@ export function RunPanel(props: RunPanelProps) {
         if (!stopRequested)
           actions = (
             <div ref={retryRef} className="actions">
-              <Button variant="primary" onPress={() => props.onDecide(id, "retry")}>
+              <Button variant="primary" onPress={() => decide(id, "retry")}>
                 {t.step.retry}
               </Button>
-              <Button onPress={() => props.onDecide(id, "skip")}>{t.step.skip}</Button>
-              <Button variant="danger" onPress={props.onStop}>
+              <Button onPress={() => decide(id, "skip")}>{t.step.skip}</Button>
+              <Button variant="danger" onPress={stop}>
                 {t.step.stopRun}
               </Button>
             </div>
@@ -135,7 +163,13 @@ export function RunPanel(props: RunPanelProps) {
         );
         if (!irreversible)
           actions = (
-            <Button onPress={() => props.onUndo(id)} aria-label={`${t.step.undo}: ${title}`}>
+            <Button
+              onPress={(e) => {
+                keepFocusInPlace(e.target);
+                props.onUndo(id);
+              }}
+              aria-label={`${t.step.undo}: ${title}`}
+            >
               {t.step.undo}
             </Button>
           );
@@ -153,30 +187,36 @@ export function RunPanel(props: RunPanelProps) {
 
   return (
     <Panel title={t.run.panel} className="run">
-      <div className="run-bar">
+      <div ref={barRef} className="run-bar">
         <Toolbar label={t.run.controls}>
-          <Button variant="danger" onPress={props.onStop} isDisabled={!canStop} aria-keyshortcuts="S">
-            {t.run.stop}{" "}
-            <span aria-hidden="true">
-              <Kbd>S</Kbd>
-            </span>
+          <Button variant="danger" onPress={stop} isDisabled={!canStop} shortcut={{ key: "s" }}>
+            {t.run.stop}
           </Button>
           <ButtonGroup>
-            <Button onPress={paused ? props.onResume : props.onPause} isDisabled={!paused && !canPause} aria-keyshortcuts="P">
-              {paused ? t.run.resume : t.run.pause}{" "}
-              <span aria-hidden="true">
-                <Kbd>P</Kbd>
-              </span>
+            <Button onPress={paused ? props.onResume : props.onPause} isDisabled={!paused && !canPause} shortcut={{ key: "p" }}>
+              {paused ? t.run.resume : t.run.pause}
             </Button>
           </ButtonGroup>
           {ended && (
-            <Button variant="primary" onPress={props.onNewPlan}>
+            <Button
+              variant="primary"
+              onPress={(e) => {
+                // The new plan's Run takes the place of the run panel.
+                keepFocusInPlace(e.target);
+                props.onNewPlan();
+              }}
+            >
               {t.run.newPlan}
             </Button>
           )}
         </Toolbar>
         <span className="run-bar__progress">{t.run.progress(f.int(processed), f.int(steps.length))}</span>
-        <StatusBadge tone={STATUS_TONE[session.status]}>{t.run.status[session.status]}</StatusBadge>
+        {stopRequested && !ended ? (
+          // The stream reopens to carry the stop; the run is not "running" on.
+          <StatusBadge tone="warning">{t.run.stoppingTitle}</StatusBadge>
+        ) : (
+          <StatusBadge tone={STATUS_TONE[session.status]}>{t.run.status[session.status]}</StatusBadge>
+        )}
       </div>
       {props.notice}
       {stopRequested && !ended && (

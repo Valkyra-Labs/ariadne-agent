@@ -110,7 +110,7 @@ be read.
 - Unit tests: Vitest tests passed (`pnpm test`).
 - e2e: Playwright tests passed in Chromium against `vite preview` of the
   build, Service Worker included (`e2e/`).
-- axe: axe-core 4.13.0 in the e2e, on each of the seven states listed
+- axe: axe-core 4.13.0 in the e2e, on each of the eight states listed
   under [Accessibility](#accessibility) in English, Russian and Arabic,
   light and dark; a serious or critical violation fails the run. The
   scans outside that matrix (in `e2e/agent.spec.ts` and
@@ -127,8 +127,9 @@ be read.
 
 What the tests check, and nothing wider: axe-core finds no serious or
 critical violation on the plan, a confirmation, a failed step with the
-undo countdown, a stopped run with its summary and toasts, an empty plan,
-the run service starting, and the run service failed, in English, Russian
+undo countdown, a stopped run with its summary and toasts, New plan asking
+before it ends an open undo window, an empty plan, the run service
+starting, and the run service failed, in English, Russian
 and Arabic, light and dark (Chromium only). The main tasks are tested by
 keyboard: editing the plan, running, confirming and skipping, retrying a
 failed step, stopping from a confirmation, pausing and resuming. The

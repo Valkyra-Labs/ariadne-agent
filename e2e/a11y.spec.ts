@@ -41,7 +41,12 @@ for (const lang of LANGS)
       await expect(page.locator(".summary")).toBeVisible();
       await expectNoSeriousViolations(page, "stopped, with summary and toasts", { lang, theme });
 
+      // The letter's undo window is still open: New plan asks first.
       await page.getByRole("button", { name: t.run.newPlan }).click();
+      await expect(confirmation(page)).toBeVisible();
+      await expectNoSeriousViolations(page, "new plan with an open undo window", { lang, theme });
+      await confirmation(page).getByRole("button", { name: t.newPlanAsk.confirm }).click();
+      await expectPlanState(page, "draft");
       for (let i = 0; i < 12; i += 1) await page.locator(".stoa-reorder__remove").first().click();
       await expect(page.getByText(t.plan.emptyTitle)).toBeVisible();
       await expectNoSeriousViolations(page, "empty plan", { lang, theme });
@@ -99,6 +104,21 @@ test("the theme follows the system until one is chosen, and the choice is kept",
   expect(await page.evaluate(() => localStorage.getItem("ariadne-agent.theme"))).toBeNull();
   await page.reload();
   await expect(html).not.toHaveAttribute("data-theme");
+});
+
+test("the browser's own controls take the theme (color-scheme)", async ({ page }) => {
+  const scheme = () => page.evaluate(() => getComputedStyle(document.documentElement).colorScheme);
+  for (const system of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme: system });
+    await page.goto("/?theme=system");
+    await ready(page);
+    expect(await scheme()).toBe(system);
+    for (const theme of THEMES) {
+      await page.goto(`/?theme=${theme}`);
+      await ready(page);
+      expect(await scheme(), `${theme} on a ${system} system`).toBe(theme);
+    }
+  }
 });
 
 test("the language switches the whole interface and is kept", async ({ page }) => {
@@ -195,6 +215,33 @@ for (const width of [1280, 375])
       await expectPlanState(page, "stopped");
       expect(await sideways()).toEqual([0, 0]);
     });
+
+for (const [width, height] of [
+  [1280, 800],
+  [375, 812],
+] as const)
+  test(`Run and the run service's state are on the first screen at ${width}x${height}`, async ({ browser }) => {
+    for (const lang of LANGS) {
+      const t = strings[lang];
+      const context = await browser.newContext({ viewport: { width, height } });
+      const page = await context.newPage();
+      await page.goto(`/?lang=${lang}`);
+      await ready(page, t.plan.run);
+      const run = page.getByRole("button", { name: t.plan.run });
+      const box = (await run.boundingBox())!;
+      expect(box.y + box.height, `${lang}: Run's bottom edge`).toBeLessThanOrEqual(height);
+      await context.close();
+      // A run service that failed says so where Run is.
+      const blocked = await browser.newContext({ viewport: { width, height }, serviceWorkers: "block" });
+      const second = await blocked.newPage();
+      await second.goto(`/?lang=${lang}`);
+      const failed = second.getByText(t.service.failedTitle);
+      await expect(failed).toBeVisible();
+      const top = (await failed.boundingBox())!;
+      expect(top.y + top.height, `${lang}: the failure's title`).toBeLessThanOrEqual(height);
+      await blocked.close();
+    }
+  });
 
 for (const theme of THEMES)
   test(`the header stays put and the scrollbars are Stoa's, ${theme}`, async ({ page }) => {
